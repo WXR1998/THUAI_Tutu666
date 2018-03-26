@@ -10,13 +10,51 @@ extern vector<command2> c2;
 extern State* state;
 extern int** map;
 extern bool flag;
-
 /*
-é’ˆå¯¹è‡ªå·±æ‰€åœ¨ä½ç½®çš„é—®é¢˜ å¦‚æœflag==1 éœ€è¦æŠŠæ‰€æœ‰çš„ä¿¡æ¯ä¸­çš„positionå…¨éƒ¨å–å
-å› ä¸ºmapæ˜¯ä¸­å¿ƒå¯¹ç§°çš„ æ‰€ä»¥ä¸éœ€è¦å¯¹mapè¿›è¡Œåæ ‡å˜æ¢
-éœ€è¦å¯¹è·¯å¾„è¿›è¡Œç¼–å· ä»ä¸Šå¾€ä¸‹åˆ†åˆ«ä¸º1åˆ°road_count
-æ¯æ¡è·¯å¾„ä¸Šåˆ†åˆ«æœ‰ä¸€ä¸ªå®ä½“å¨èƒå€¼(0)å’Œæ•°æ®å¨èƒå€¼(1)
+Õë¶Ô×Ô¼ºËùÔÚÎ»ÖÃµÄÎÊÌâ Èç¹ûflag==1 ĞèÒª°ÑËùÓĞµÄĞÅÏ¢ÖĞµÄpositionÈ«²¿È¡·´ ¸Ã²Ù×÷³ÆÎª×ø±ê±ä»»
+×ø±ê±ä»»Ö»ĞèÒª¶Ôstate½Ó¿ÚµÃµ½µÄÊı¾İÉÏÊ¹ÓÃÒ»´Î¼´¿É
+ÒòÎªmapÊÇÖĞĞÄ¶Ô³ÆµÄ ËùÒÔ²»ĞèÒª¶Ômap½øĞĞ×ø±ê±ä»»
+ĞèÒª¶ÔÂ·¾¶½øĞĞ±àºÅ ´ÓÉÏÍùÏÂ·Ö±ğÎª1µ½road_count
+
+Ã¿ÌõÂ·¾¶ÉÏ·Ö±ğÓĞÒ»¸öÊµÌåÍşĞ²Öµ(0)ºÍÊı¾İÍşĞ²Öµ(1)
+Ã¿ÌõÂ·¾¶ÉÏ·Ö±ğÓĞÒ»¸öÊµÌå¹¥»÷Öµ(0)ºÍÊı¾İ¹¥»÷Öµ(1)
+Ã¿´ÎÈ¡ÍşĞ²Öµ×î¸ßµÄÒ»Â··ÀÓù È¡¹¥»÷Öµ×î¸ßµÄÒ»Â·½ø¹¥
+µ±ËùÓĞÂ·µÄÍşĞ²Öµ¶¼µÍÓÚÄ³¸öÖµÊ± ¿ÉÒÔ¿ªÊ¼ ÔìÂëÅ© »òÕß ÌáÉı¿Æ¼¼Ê±´ú »òÕß ·¢¶¯½ø¹¥
+ÂëÅ©ÊıÁ¿ÉÏÏŞÎªµ±Ç°Ê±´ú½¨ÖşÉÏÏŞ³ËÉÏÒ»¸öÏµÊı
+¿Æ¼¼Ê±´úÉÏÏŞÎª¶Ô·½Ê±´ú¼ÓÉÏÒ»¶¨ÏµÊı
+
+ÓÅÏÈÎ¬ĞŞ½¨Öş
+Éı¼¶Ê±´úÖ®ºó ÓÅÏÈ°Ñ½¨ÖşÉı¼¶µ½µ±Ç°Ê±´ú
+
+°ÑËùÓĞÂ·×ö³Épair<int, double>(roadnum, value)£¬²åÈëÓÅÏÈ¶ÓÁĞ(´ó¶¥¶Ñ)
+È¡ÍşĞ²Öµ×î´óµÄÔªËØ ÔÚÏàÓ¦µÄÂ·ÉÏ½¨Á¢·ÀÓù½¨Öş Í¬Ê±°Ñvalue¼õÈ¥Ò»¶¨Öµ ÔÙ·Å»ØÓÅÏÈ¶ÓÁĞ
+È¡½ø¹¥Öµ×î´óµÄÔªËØ ÔÚÏàÓ¦µÄÂ·ÉÏ½¨Á¢Éú²ú½¨Öş(Éı¼¶½¨Öş) Í¬Ê±°Ñvalue¼ÓÉÏÒ»¶¨Öµ ÔÙ·Å»ØÓÅÏÈ¶ÓÁĞ
 */
+
+//#############################################################################################
+//³£Á¿¶¨Òå
+const int BUILDING_RESOURCE[18] =		{};//½¨ÖşĞèÒª¶àÉÙ×ÊÔ´
+const int BUILDING_BUILDINGCOST[18] = {};//½¨ÖşĞèÒª¶àÉÙ½¨ÔìÁ¦ TODO
+
+const int SOLDIER_ATTACK[8] =					{	10, 16,	160,15,	300,15, 10, 500 };
+const int SOLDIER_ATTACKRANGE[8] =				{	16, 24,	6,	10, 6,	40, 12, 20 };
+const int SOLDIER_SPEED[8] =					{	16, 12,	20,	6,	24, 16, 4,	12 };
+const int SOLDIER_TYPE[8] =						{	1,	0,	0,	0,	1,	0,	1,	0 };
+const int SOLDIER_MOVETYPE[8] =					{	0,	0,	1,	2,	1,	0,	2,	0 };
+const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 20, 5 };//ÍÆËş ³å·æ ¿¹Ïß
+
+const int BUILDING_DEFENCE[17] =		{0, 0, 0, 0, 0, 0, 0, 0, 0, 8*6, 20*2, 4*6, 25*3, 8*6, 10*6, 15*6, 100};
+const int BUILDING_TYPE[17] =			{3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 0, 0, 0, 2, 1, 2, 2};//½¨ÖşÊÇÊı¾İĞÍ·ÀÓù(1)»¹ÊÇÊµÌåĞÍ·ÀÓù(0)»¹ÊÇÈ«²¿(2)
+const int BUILDING_ATTACK_RANGE[17] =	{0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 30, 60, 40, 50, 36, 24, 20};
+const int BUILDING_LEVEL_FACTOR[6] =	{2, 3, 4, 5, 6, 7};
+
+const double SOLDIER_ATTACK_FACTOR = 1;	//¶Ô±øµÄ¹¥»÷Öµ½øĞĞÒ»¶¨µ÷Õû ÒÔºÍ½¨ÖşµÄÍşĞ²Öµ½øĞĞÆ½ºâ
+
+const int dir[4][2] = {0, 1, 1, 0, 0, -1, -1, 0};
+
+//#############################################################################################
+//º¯Êı¶¨Òå
+
 int distance(Position a, Position b) {
 	return abs(a.x - b.x) + abs(a.y - b.y);
 }
@@ -25,7 +63,7 @@ Position inversePosition(Position p) {
 }
 Position Pos(Position p) {
 	/*
-		è¿”å›å˜æ¢ä¹‹åçš„åæ ‡
+		·µ»Ø±ä»»Ö®ºóµÄ×ø±ê
 	*/
 	return !flag ? inversePosition(p) : p;
 }
@@ -44,6 +82,9 @@ void getRoadNumberDfs(Position p, int number) {
 	getRoadNumberDfs(Position(p.x, p.y + 1), number);
 }
 void getRoadNumber() {
+	/*
+		¸Ãº¯ÊıÓÃÓÚ¸øÂ·±àºÅ  Ö»»áÔËĞĞÒ»´Î
+	*/
 	if (road_number_flag) return;
 	road_number_flag = true;
 	for (int i = 0; i < 7; ++ i)
@@ -55,8 +96,8 @@ void getRoadNumber() {
 }
 
 bool can_construct[200][200];
-const int dir[4][2] = {0, 1, 1, 0, 0, -1, -1, 0};
 void canConstructUpdate() {
+	memset(can_construct, 0, sizeof can_construct);
 	for (int i = 0; i < 11; ++i)
 		for (int j = 0; j < 11; ++j)
 			if (i < 7 && j < 7);
@@ -64,7 +105,7 @@ void canConstructUpdate() {
 				can_construct[i][j] = true;
 	for (auto i = state->building[flag].begin(); i != state->building[flag].end(); ++i) 
 		for (int j = 0; j < 4; ++j) {
-			int tx = (*i).pos.x + dir[j][0], ty = (*i).pos.y + dir[j][1];
+			int tx = Pos((*i).pos).x + dir[j][0], ty = Pos((*i).pos).y + dir[j][1];
 			if (positionIsValid(Position(tx, ty)))
 				can_construct[tx][ty] = true;
 		}
@@ -74,28 +115,65 @@ void canConstructUpdate() {
 				can_construct[i][j] = false;
 	for (int j = 0; j < 2; ++j)
 		for (auto i = state->building[j].begin(); i != state->building[j].end(); ++i)
-			can_construct[(*i).pos.x][(*i).pos.y] = false;
+			can_construct[Pos((*i).pos).x][Pos((*i).pos).y] = false;
 }
 bool canConstruct(Position p) {
 	/*
-		è¿”å›ä¸€ä¸ªä½ç½®æ˜¯å¦èƒ½å¤Ÿå»ºé€ å»ºç­‘
+		·µ»ØÒ»¸öÎ»ÖÃÊÇ·ñÄÜ¹»½¨Ôì½¨Öş
 	*/
 	return can_construct[p.x][p.y];
 }
 
-int crisis_value[2][10];
-int attack_value[2][10];
-void calcCrisisValue() {
+double crisis_value[2][2][10];//0Îª¶Ô·½¶ÔÎÒÃÇµÄÍşĞ²Öµ 1ÎªÎÒÃÇµÄ¹¥»÷Öµ
+double soldierCrisisValue(Soldier s, int t) {
 	/*
-		è®¡ç®—å¨èƒå€¼ å¨èƒå€¼å¦‚ä¸‹è®¡ç®—ï¼š
-		åœ¨è¯¥è·¯ä¸Šæœ‰ä¸€ä¸ªå…µ
-		æœ‰ä¸€ä¸ªå»ºç­‘çš„å‡ºå…µç‚¹åœ¨è¯¥è·¯ä¸Š
+		·µ»Ø±øµÄÍşĞ²Öµ tÎª0»ò1 ÎªÊı¾İ»òÊµÌåÍşĞ²Öµ
 	*/
-	memset(crisis_value, 0, sizeof crisis_value);
+	int type = s.soldier_name;
+	return s.heal * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] * 
+		log(SOLDIER_ATTACKRANGE[type]) * SOLDIER_SPEED[type] * (t == SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR;
+}
+double buildingCrisisValue(Building b, int t, int roadnum) {
+	/*
+		·µ»Ø½¨Öş¶ÔÄ³Ò»Â·µÄÍşĞ²Öµ tÎª0»ò1 
+	*/
+	int type = b.building_type, grid = 0, range = BUILDING_ATTACK_RANGE[b.building_type], typeFactor;
+	for (int i = -range; i <= range; ++i)
+		for (int j = -range + abs(i); j <= -abs(i) + range; ++j) {
+			int x = i + Pos(b.pos).x, y = j + Pos(b.pos).y;
+			if (positionIsValid(Position(x, y)))
+				if (road_number[x][y] == roadnum)
+					++grid;
+		}
+	typeFactor = (BUILDING_TYPE[type] == 2) ? 1 : (t == BUILDING_TYPE[type]);
+	return log(b.heal) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * grid * typeFactor;
+
+}
+void calcCriAttValue() {
+	/*
+		ÍşĞ²ÖµµÄ¼ÆËã·½Ê½£º¸ÃÂ·ÉÏ µĞ·½±øµÄÍşĞ²ÖµÖ®ºÍ - ¸ÃÂ·ÉÏÎÒ·½¿¹Ïß±øµÄÍşĞ²ÖµÖ®ºÍ - ¸ÃÂ·ÉÏÎÒ·½·ÀÓù½¨ÖşÍşĞ²ÖµÖ®ºÍ
+		¹¥»÷ÖµµÄ¼ÆËã·½Ê½£º¸ÃÂ·ÉÏ ÎÒ·½±øµÄÍşĞ²ÖµÖ®ºÍ - ¸ÃÂ·ÉÏµĞ·½¿¹Ïß±øµÄÍşĞ²ÖµÖ®ºÍ - ¸ÃÂ·ÉÏµĞ·½·ÀÓù½¨ÖşÍşĞ²ÖµÖ®ºÍ
+	*/
+	for (int PLAYER = 0; PLAYER < 2; ++PLAYER) {
+		memset(crisis_value, 0, sizeof crisis_value);
+		for (auto i = state->soldier[!PLAYER].begin(); i != state->soldier[!PLAYER].end(); ++i)
+			for (int j = 0; j < 2; ++j)
+				crisis_value[PLAYER][j][road_number[Pos((*i).pos).x][Pos((*i).pos).y]] += soldierCrisisValue(*i, j);
+		for (auto i = state->building[PLAYER].begin(); i != state->building[PLAYER].end(); ++i)
+			for (int j = 0; j < 2; ++j)
+				for (int k = 1; k <= road_count; ++k)
+					crisis_value[PLAYER][j][k] -= buildingCrisisValue(*i, j, k);
+		for (auto i = state->soldier[PLAYER].begin(); i != state->soldier[PLAYER].end(); ++i)
+			if (SOLDIER_MOVETYPE[(*i).soldier_name] == 2)
+				for (int j = 0; j < 2; ++j)
+					crisis_value[PLAYER][j][road_number[Pos((*i).pos).x][Pos((*i).pos).y]] -= soldierCrisisValue(*i, j);
+	}
 }
 
+//#############################################################################################
+//Ö÷³ÌĞò
 void f_player() {
 	getRoadNumber();
 	canConstructUpdate();
-	calcCrisisValue();
+	calcCriAttValue();
 }
