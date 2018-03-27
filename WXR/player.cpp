@@ -2,6 +2,7 @@
 #include "communication.h"
 #include <vector>
 #include <iostream>
+#include <queue>
 using namespace std;
 
 extern bool _updateAge;
@@ -23,12 +24,14 @@ extern bool flag;
 码农数量上限为当前时代建筑上限乘上一个系数
 科技时代上限为对方时代加上一定系数
 
-优先维修建筑
-升级时代之后 优先把建筑升级到当前时代
+优先建造新的建筑
+升级时代之后 优先消耗完当前turn的建筑点 其次优先把建筑升级到当前时代 
 
 把所有路做成pair<int, double>(roadnum, value)，插入优先队列(大顶堆)
 取威胁值最大的元素 在相应的路上建立防御建筑 同时把value减去一定值 再放回优先队列
 取进攻值最大的元素 在相应的路上建立生产建筑(升级建筑) 同时把value加上一定值 再放回优先队列
+
+码农需要一定比例
 */
 
 //#############################################################################################
@@ -39,18 +42,23 @@ const int BUILDING_BUILDINGCOST[18] = {};//建筑需要多少建造力 TODO
 const int SOLDIER_ATTACK[8] =					{	10, 16,	160,15,	300,15, 10, 500 };
 const int SOLDIER_ATTACKRANGE[8] =				{	16, 24,	6,	10, 6,	40, 12, 20 };
 const int SOLDIER_SPEED[8] =					{	16, 12,	20,	6,	24, 16, 4,	12 };
-const int SOLDIER_TYPE[8] =						{	1,	0,	0,	0,	1,	0,	1,	0 };
+const int _SOLDIER_TYPE[8] =					{	1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] =					{	0,	0,	1,	2,	1,	0,	2,	0 };
 const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 20, 5 };//推塔 冲锋 抗线
 
 const int BUILDING_DEFENCE[17] =		{0, 0, 0, 0, 0, 0, 0, 0, 0, 8*6, 20*2, 4*6, 25*3, 8*6, 10*6, 15*6, 100};
-const int BUILDING_TYPE[17] =			{3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 0, 0, 0, 2, 1, 2, 2};//建筑是数据型防御(1)还是实体型防御(0)还是全部(2)
+const int _BUILDING_TYPE[17] =			{3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 0, 0, 0, 2, 1, 2, 2};//建筑是数据型防御(1)还是实体型防御(0)还是全部(2)
 const int BUILDING_ATTACK_RANGE[17] =	{0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 30, 60, 40, 50, 36, 24, 20};
 const int BUILDING_LEVEL_FACTOR[6] =	{2, 3, 4, 5, 6, 7};
+const int BUILDING_HEAL[18] =			{10000, 150, 200, 180, 200, 150, 160, 300, 250, 300, 280, 225, 300, 180, 450, 1000, 400, 100};
 
 const double SOLDIER_ATTACK_FACTOR = 1;	//对兵的攻击值进行一定调整 以和建筑的威胁值进行平衡
 
 const int dir[4][2] = {0, 1, 1, 0, 0, -1, -1, 0};
+const int MAX_OPERATION_PER_TURN = 50;
+const double MAX_CRISIS = 0;	//当所有路的crisis值都小于这个值的时候 可以开始发动进攻 否则防守
+const double MIN_ATTACK = 0;	//当所有路的attack值都大于这个值的时候 可以开始发展 否则进攻
+const double PROGRAMMER_RATIO = 0.3;
 
 //#############################################################################################
 //函数定义
@@ -131,7 +139,7 @@ double soldierCrisisValue(Soldier s, int t) {
 	*/
 	int type = s.soldier_name;
 	return s.heal * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] * 
-		log(SOLDIER_ATTACKRANGE[type]) * SOLDIER_SPEED[type] * (t == SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR;
+		log(SOLDIER_ATTACKRANGE[type]) * SOLDIER_SPEED[type] * (t == _SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR;
 }
 double buildingCrisisValue(Building b, int t, int roadnum) {
 	/*
@@ -145,7 +153,7 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 				if (road_number[x][y] == roadnum)
 					++grid;
 		}
-	typeFactor = (BUILDING_TYPE[type] == 2) ? 1 : (t == BUILDING_TYPE[type]);
+	typeFactor = (_BUILDING_TYPE[type] == 2) ? 1 : (t == _BUILDING_TYPE[type]);
 	return log(b.heal) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * grid * typeFactor;
 
 }
@@ -170,10 +178,83 @@ void calcCriAttValue() {
 	}
 }
 
+int operation_count;	//每回合的操作数
+double my_building_credits;	//每回合的建造力
+int my_resource;	//本轮的资源
+void _maintain() {
+	/*
+		优先维修健康值低的建筑
+	*/
+	priority_queue <pair<double, vector<Building>::iterator> > h;
+	for (auto i = state->building[flag].begin(); i != state->building[flag].end(); ++i) {
+		double full_hp = BUILDING_HEAL[(*i).building_type] * (1 + 0.5*(*i).level);
+		h.push(make_pair(-(*i).heal / full_hp, i));
+	}
+	while (!h.empty() && operation_count > 0) {
+		auto t = h.top(); h.pop();
+		if ((*(t.second)).level != state->age[flag])
+			upgrade((*(t.second)).unit_id);
+		else
+			toggleMaintain((*(t.second)).unit_id);
+		--operation_count;
+	}
+	if (operation_count > 0)
+		updateAge();
+}
+void _build_programmer() {
+	for (int i = 7; i < 20; ++i) {
+		for (int j = 0; j <= i; ++j) {
+			if (canConstruct(Position(j, i))) {
+				construct(Programmer, Pos(Position(j, i)));
+				return;
+			}
+			if (canConstruct(Position(i, j))) {
+				construct(Programmer, Pos(Position(j, i)));
+				return;
+			}
+		}
+	}
+}
+void _defend() {
+	/*
+		防御
+	*/
+}
+void _attack() {
+	/*
+		进攻
+	*/
+}
+
 //#############################################################################################
 //主程序
 void f_player() {
+	operation_count = MAX_OPERATION_PER_TURN;
 	getRoadNumber();
 	canConstructUpdate();
 	calcCriAttValue();
+	my_resource = state->resource[flag].resource;
+	my_building_credits = state->resource[flag].building_point;
+	pair<double, pair<int, int> > max_crisis = make_pair(0, make_pair(-1, -1));
+	pair<double, pair<int, int> > max_attack = make_pair(0, make_pair(-1, -1));
+	for (int i = 0; i < 2; ++i)
+		for (int j = 1; j <= road_count; ++j)
+			max_crisis = max(max_crisis, make_pair(crisis_value[0][i][j], make_pair(i, j)));
+	for (int i = 0; i < 2; ++i)
+		for (int j = 1; j <= road_count; ++j)
+			max_attack = max(max_attack, make_pair(crisis_value[1][i][j], make_pair(i, j)));
+	if (max_crisis.first > MAX_CRISIS)
+		_defend();
+	else {
+		int tot_programmer = 0;
+		for (auto i = state->building[flag].begin(); i != state->building[flag].end(); ++i)
+			if ((*i).building_type == Programmer)
+				++tot_programmer;
+		while (tot_programmer < min(PROGRAMMER_RATIO * state->building[flag].size(), 5))
+			_build_programmer();
+		if (max_attack.first < MIN_ATTACK)
+			_attack();
+		else
+			_maintain();
+	}
 }
