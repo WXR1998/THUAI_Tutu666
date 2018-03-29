@@ -3,6 +3,8 @@
 #include <vector>
 #include <iostream>
 #include <queue>
+#include <ctime>
+#include <cstdlib>
 using namespace std;
 
 extern bool _updateAge;
@@ -33,6 +35,29 @@ extern bool flag;
 
 码农需要一定比例
 */
+
+class GenRandom {
+	vector <pair<int, int> > t;
+	int sum;
+public:
+	GenRandom() {
+		t.clear();
+		sum = 0;
+	}
+	void addItem(pair<int, int> d) {// <id, prob>
+		t.push_back(d);
+		sum += d.second;
+	}
+	int rand() {//按照prob的可能性  返回id
+		if (sum == 0) return -1;
+		int tmp = rand() % sum + 1;
+		for (auto i = t.begin(); i != t.end(); ++i) {
+			tmp -= (*i).second;
+			if (tmp <= 0)
+				return (*i).first;
+		}
+	}
+};
 
 //#############################################################################################
 //常量定义
@@ -228,7 +253,12 @@ void _attack() {
 
 //#############################################################################################
 //主程序
+int srand_flag = 0;
 void f_player() {
+	if (!srand_flag) {
+		srand_flag = 1;
+		srand((flag + 1) * time(NULL));
+	}
 	operation_count = MAX_OPERATION_PER_TURN;
 	getRoadNumber();
 	canConstructUpdate();
