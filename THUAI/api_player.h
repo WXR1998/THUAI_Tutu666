@@ -1,8 +1,8 @@
 #pragma once
-#include "stdafx.h"
+
+#include <limits.h>
 
 #define _NULL -1
-#define INT_MAX 1000000000
 
 //global const for player
 const int UPDATE_COST        = 2000;
@@ -73,7 +73,7 @@ enum BuildingAttribute {
                       //For resources buildings, it stands for Collective_Value
                       //For production buildings, it means nothing set as _NULL
 
-    ORIGNAL_RANGE,    //FOr production buildings, it stands for the range of production,
+    ORIGINAL_RANGE,    //FOr production buildings, it stands for the range of production,
                       //For defensive buildings, it stands for the range of attacking
                       //For resource buildings, it means nothing
 
@@ -124,30 +124,30 @@ const int OriginalBuildingAttribute[Building_Type][Attr_Num] = {
     {PRODUCTION_BUILDING, 200,  _NULL,  15,   ENIAC,           PROCESSOR, 200,    20,    _NULL,  15},
     {PRODUCTION_BUILDING, 150,  _NULL,  20,   PACKET,          NETWORK,   250,    25,    _NULL,  3},
     {PRODUCTION_BUILDING, 160,  _NULL,  15,   OPTICAL_FIBER,   NETWORK,   300,    30,    _NULL,  8},
-    {PRODUCTION_BUILDING, 300,  _NULL,  15,   TURING_MACHINE,  AI,        600,    60,    _NULL,  20},
-    {PRODUCTION_BUILDING, 250, _NULL,   10,   ULTRON,          AI,        600,    60,    _NULL,  20},
+    {PRODUCTION_BUILDING, 250,  _NULL,  15,   TURING_MACHINE,  AI,        600,    60,    _NULL,  20},
+    {PRODUCTION_BUILDING, 220, _NULL,   10,   ULTRON,          AI,        600,    60,    _NULL,  20},
 
-    {DEFENSIVE_BUILDING,  300,  16,     36,   DATA,            BIT,       150,    15,    0,      1},
-    {DEFENSIVE_BUILDING,  280,  20,     30,   SUBSTANCE,       CIRCUIT,   200,    20,    6,      3},
-    {DEFENSIVE_BUILDING,  225,  4,      60,   DATA,            PROCESSOR, 225,    22,    0,      1},
-    {DEFENSIVE_BUILDING,  300,  25,     40,   SUBSTANCE,       ALGORITHM, 200,    20,    0,      2},
-    {DEFENSIVE_BUILDING,  180,  6,      50,   ALL,             NETWORK,   250,    25,    8,      1},
-    {DEFENSIVE_BUILDING,  450,  5,      36,   DATA,            NETWORK,   450,    45,    0,      1},
+    {DEFENSIVE_BUILDING,  250,  16,     36,   DATA,            BIT,       150,    15,    0,      1},
+    {DEFENSIVE_BUILDING,  320,  20,     30,   SUBSTANCE,       CIRCUIT,   200,    20,    6,      3},
+    {DEFENSIVE_BUILDING,  250,  4,      60,   DATA,            PROCESSOR, 225,    22,    0,      1},
+    {DEFENSIVE_BUILDING,  350,  25,     40,   SUBSTANCE,       ALGORITHM, 200,    20,    0,      2},
+    {DEFENSIVE_BUILDING,  220,  6,      50,   ALL,             NETWORK,   250,    25,    8,      1},
+    {DEFENSIVE_BUILDING,  520,  5,      36,   DATA,            NETWORK,   450,    45,    0,      1},
     {DEFENSIVE_BUILDING,  1000, 0,      24,   ALL,             AI,        500,    50,    0,      1},
-    {DEFENSIVE_BUILDING,  400, INT_MAX, 20,   ALL,             AI,        500,    50,    2,      2},
+    {DEFENSIVE_BUILDING,  480, INT_MAX, 20,   ALL,             AI,        500,    50,    2,      2},
 
     {RESOURCE_BUILDING,   100,  10,     _NULL,_NULL,          _NULL,      100,    10, _NULL,  _NULL}
 };
 
 const int OriginalSoldierAttribute[Soldier_Type][Soldier_Attr_Num] = {
-    {DATA,      BUILDING_ATTACK,        16,     10,     16,     16},
-    {SUBSTANCE, BUILDING_ATTACK,        60,     16,     24,     12},
-    {SUBSTANCE, BASE_ATTACK,            100,    160,    6,      20},
-    {SUBSTANCE, MOVING_ATTACK,          500,    15,     10,     6},
-    {DATA,      BASE_ATTACK,            70,     300,    6,      24},
-    {SUBSTANCE, BUILDING_ATTACK,        40,     15,     40,     16},
-    {DATA,      MOVING_ATTACK,          800,    10,     12,     4},
-    {SUBSTANCE, BUILDING_ATTACK,        100,    500,    20,     12}
+    {DATA,      BUILDING_ATTACK,        16,     10,     16,     12},
+    {SUBSTANCE, BUILDING_ATTACK,        60,     18,     24,     8},
+    {SUBSTANCE, BASE_ATTACK,            100,    160,    6,      15},
+    {SUBSTANCE, MOVING_ATTACK,          550,    12,     10,     4},
+    {DATA,      BASE_ATTACK,            70,     300,    6,      16},
+    {SUBSTANCE, BUILDING_ATTACK,        40,     25,     40,     12},
+    {DATA,      MOVING_ATTACK,          850,    8,      12,     3},
+    {SUBSTANCE, BUILDING_ATTACK,        100,    500,    20,     8}
 };
 
 
