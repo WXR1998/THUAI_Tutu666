@@ -1,9 +1,9 @@
-#include "stdafx.h"
+//#include "stdafx.h"
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0402.15
+		0.0402.21
 	Instructions:
 		上交代码到网页上的时候请注释掉第一行
 		本地编译需要在编译设置里加上一句 /D "LOCAL"
@@ -130,17 +130,6 @@ public:
 
 //#############################################################################################
 //常量定义
-#ifndef LOCAL
-const int UPDATE_COST = 2000;
-const int UPDATE_COST_PLUS = 1500;
-const int MAX_BD_NUM = 40;
-const int MAX_BD_NUM_PLUS = 20;
-const int MAP_SIZE = 200;
-const int BASE_SIZE = 7;
-const int BD_RANGE = 8;
-const int BD_RANGE_FROM_BASE = 4;
-const float AGE_INCREASE = 0.5;
-#endif
 
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 300, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };//建筑需要多少资源
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 30, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };//建筑需要多少建造力 TODO
@@ -164,9 +153,9 @@ const double SOLDIER_ATTACK_FACTOR = 8e-2;	//对兵的攻击值进行一定调整 以和建筑的
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
 const double MAX_CRISIS = 0;	//当所有路的crisis值都小于这个值的时候 可以开始发动进攻 否则防守
-const double MIN_ATTACK = 1e5;	//当所有路的attack值都大于这个值的时候 可以开始发展 否则进攻
-const double PROGRAMMER_RATIO = 0.5;
-const double PROGRAMMER_MIN_PARTITION = 0.3;
+const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};	//当所有路的attack值都大于这个值的时候 可以开始发展 否则进攻
+const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.7, 0.7, 0.7, 0.7};
+const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.7, 0.7, 0.7, 0.7};
 const int MAX_TRIAL = 5;
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 2; 
 
@@ -217,7 +206,6 @@ bool _UpdateAge() {
 	return true;
 }
 
-
 bool positionIsValid(Position p) {
 	return p.x >= 0 && p.x < MAP_SIZE && p.y >= 0 && p.y < MAP_SIZE;
 }
@@ -241,7 +229,7 @@ void getRoadNumber() {
 	for (int i = 0; i < 7; ++i)
 		if (ts19_map[i][7] == 1 && road_number[i][7] == 0)
 			getRoadNumberDfs(Position(i, 7), ++road_count);
-	for (int i = 6; i >= 0; --i)
+	for (int i = 7; i >= 0; --i)
 		if (ts19_map[7][i] == 1 && road_number[7][i] == 0)
 			getRoadNumberDfs(Position(7, i), ++road_count);
 }
@@ -318,7 +306,7 @@ void calcCriAttValue() {
 		for (int j = 0; j < 2; ++j) {
 			crisis_value[0][j][road_number[Pos((*i).pos).x][Pos((*i).pos).y]] += soldierCrisisValue(*i, j);
 		}
-	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)//??????
+	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		for (int j = 0; j < 2; ++j)
 			for (int k = 1; k <= road_count; ++k) {
 				crisis_value[0][j][k] -= buildingCrisisValue(*i, j, k);
@@ -333,7 +321,7 @@ void calcCriAttValue() {
 		for (int j = 0; j < 2; ++j) {
 			crisis_value[1][j][road_number[Pos((*i).pos).x][Pos((*i).pos).y]] += soldierCrisisValue(*i, j);
 		}
-	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)//??????
+	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
 		for (int j = 0; j < 2; ++j)
 			for (int k = 1; k <= road_count; ++k)
 				crisis_value[1][j][k] -= buildingCrisisValue(*i, j, k);
@@ -436,13 +424,16 @@ void _attack() {
 		for (int j = 1; j <= road_count; ++j)
 			h.push(heapComp(crisis_value[1][i][j], i, j));
 	int fail_trial = 0;
-	while (h.top().val < MIN_ATTACK && operation_count > 0 && fail_trial < MAX_TRIAL) {
+	while (h.top().val < MIN_ATTACK[state->age[ts19_flag]] && operation_count > 0 && fail_trial < MAX_TRIAL) {
 		heapComp t = h.top(); h.pop();
 		gr.clear();
 		for (int i = 1; i < 9; ++i)
-			if (_BUILDING_TYPE[i] == t.typ && BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag])
+			//if (_BUILDING_TYPE[i] == t.typ && BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag]) 
+			if (BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag]) 
 				gr.addItem(make_pair(i, i));
 		int bdtype = gr._rand();//钦定建造建筑的类型
+		if (bdtype == -1)
+			continue;
 		gr.clear();
 		for (int i = 0; i < MAP_SIZE; ++i)
 			for (int j = 0; j < MAP_SIZE; ++j)
@@ -454,7 +445,7 @@ void _attack() {
 			can_construct[bdpos.x][bdpos.y] = false;
 			my_resource -= BUILDING_RESOURCE[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE);
 			my_building_credits -= BUILDING_BUILDINGCOST[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE);
-			debug("Build Attack %d at (%d,%d) while (%d,%d)\n", bdtype, Pos(bdpos).x, Pos(bdpos).y, Pos(nearestRoad(bdpos, t.rnum)));
+			debug("Build Attack %d at (%d,%d) while (%d,%d)\n", bdtype, Pos(bdpos).x, Pos(bdpos).y, Pos(nearestRoad(bdpos, t.rnum)).x, Pos(nearestRoad(bdpos, t.rnum)).y);
 		}
 		else
 			++fail_trial;
@@ -491,22 +482,22 @@ void f_player() {
 			max_attack = max(max_attack, make_pair(crisis_value[1][i][j], make_pair(i, j)));
 
 	/*
-	printf("\n");
-	for (int i = 0; i < 30; ++i) {
-		for (int j = 0; j < 30; ++j)
-			printf("%c", can_construct[i][j]?'#':'.');
-		printf("\n");
-	}
-	printf("\n");
+	for (int i = 1; i <= road_count; ++i)
+		debug("DEF Road #%d: %.0lf\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
+	for (int i = 1; i <= road_count; ++i)
+		debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
+	debug("\n");
 	*/
 
+	if (my_resource > (UPDATE_COST + UPDATE_COST_PLUS * state->age[ts19_flag]) * 2) 
+		_UpdateAge();
 	int tot_programmer = 0;
 	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		if ((*i).building_type == Programmer)
 			++tot_programmer;
 
-	while (tot_programmer < min(PROGRAMMER_RATIO * state->building[ts19_flag].size(),
-		PROGRAMMER_MIN_PARTITION * (MAX_BD_NUM + MAX_BD_NUM_PLUS * state->age[ts19_flag]))) {
+	while (tot_programmer < min(PROGRAMMER_RATIO[state->age[ts19_flag]] * state->building[ts19_flag].size(),
+		PROGRAMMER_MIN_PARTITION[state->age[ts19_flag]] * (MAX_BD_NUM + MAX_BD_NUM_PLUS * state->age[ts19_flag]))) {
 		_build_programmer();
 		++tot_programmer;
 	}
