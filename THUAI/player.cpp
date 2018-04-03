@@ -159,8 +159,8 @@ const double MAX_CRISIS = 0;	//当所有路的crisis值都小于这个值的时候 可以开始发动
 const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};	//当所有路的attack值都大于这个值的时候 可以开始发展 否则进攻
 const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.7, 0.7, 0.7, 0.7};
 const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.7, 0.7, 0.7, 0.7};
-const int MAX_TRIAL = 5;
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3; 
+const int MAX_TRIAL = 1;
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 1; 
 
 //#############################################################################################
 //函数定义
@@ -168,6 +168,7 @@ const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
 int operation_count;	//每回合的操作数
 double my_building_credits;	//每回合的建造力
 int my_resource;	//本轮的资源
+int my_build_request;	//本轮的建筑请求数
 bool can_construct[MAP_SIZE][MAP_SIZE];
 
 int buildingLimit() {
@@ -197,19 +198,22 @@ bool _construct(BuildingType a, Position b, Position c = Position(0, 0)) {
 	if (BUILDING_BUILDINGCOST[a] * (1 + AGE_INCREASE * state->age[ts19_flag]) > my_building_credits ||
 		BUILDING_RESOURCE[a] * (1 + AGE_INCREASE * state->age[ts19_flag]) > my_resource)
 		return false;
-	if (state->building[ts19_flag].size() >= buildingLimit()) return false;
-	//debug("Build %s %2d [%s] at (%3d,%3d) while pro=(%3d,%3d)\n", (a<9)?"ATT":((a==17)?"PGM":"DEF"), a, BUILDING_NAME[a], b.x, b.y, c.x, c.y);
+	if (int(state->building[ts19_flag].size() - 1 + my_build_request) >= buildingLimit()) 
+		return false;
+	debug("Build %s %2d [%s] at (%3d,%3d) while pro=(%3d,%3d)\n", (a<9)?"ATT":((a==17)?"PGM":"DEF"), a, BUILDING_NAME[a], b.x, b.y, c.x, c.y);
 	--operation_count;
 	construct(a, b, c);
+	++my_build_request;
 	return true;
 }
+extern bool ts19_updageAge;
 bool _UpdateAge() {
 	if (operation_count <= 0) return false;
 	if (my_resource < UPDATE_COST + UPDATE_COST_PLUS * state->age[ts19_flag])
 		return false;
 	--operation_count;
-	debug("Update Age\n");
 	updateAge();
+	debug("Update Age AFT -- %d\n", ts19_updageAge);
 	my_resource -= UPDATE_COST + UPDATE_COST_PLUS * state->age[ts19_flag];
 	return true;
 }
@@ -356,7 +360,7 @@ void _maintain() {
 			upgrade((*(t.second)).unit_id);
 		else
 			toggleMaintain((*(t.second)).unit_id);
-		my_resource -= BUILDING_RESOURCE[(*t.second).building_type] * (1 + state->age[ts19_flag] * AGE_INCREASE);
+		my_resource -= int(BUILDING_RESOURCE[(*t.second).building_type] * (1 + state->age[ts19_flag] * AGE_INCREASE));
 		--operation_count;
 	}
 	_UpdateAge();
@@ -367,10 +371,11 @@ bool _build_programmer() {
 			if (canConstruct(Position(i, j)))
 				if (_construct(Programmer, Pos(Position(i, j)))) {
 					can_construct[i][j] = false;
-					my_resource -= BUILDING_RESOURCE[Programmer] * (1 + state->age[ts19_flag] * AGE_INCREASE);
+					my_resource -= int(BUILDING_RESOURCE[Programmer] * (1 + state->age[ts19_flag] * AGE_INCREASE));
 					my_building_credits -= BUILDING_BUILDINGCOST[Programmer] * (1 + state->age[ts19_flag] * AGE_INCREASE);
 					return true;
-				}
+				}else
+					return false;
 	return false;
 }
 
@@ -385,6 +390,7 @@ Position nearestRoad(Position p, int roadnum) {
 }
 
 void _defend() {
+	if (int(state->building[ts19_flag].size() - 1 + my_build_request) >= buildingLimit()) return ;
 	priority_queue < heapComp > h;
 	GenRandom gr;
 	Timer timer;
@@ -415,9 +421,9 @@ void _defend() {
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 		if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
 			can_construct[bdpos.x][bdpos.y] = false;
-			Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype] * (1 + AGE_INCREASE * state->age[ts19_flag]), Pos(bdpos), ts19_flag, 0, state->age[ts19_flag]);
+			Building tmpbd = Building(BuildingType(bdtype), int(BUILDING_HEAL[bdtype] * (1 + AGE_INCREASE * state->age[ts19_flag])), Pos(bdpos), ts19_flag, 0, state->age[ts19_flag]);
 			t.val -= buildingCrisisValue(tmpbd, t.typ, t.rnum);
-			my_resource -= BUILDING_RESOURCE[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE);
+			my_resource -= int(BUILDING_RESOURCE[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE));
 			my_building_credits -= BUILDING_BUILDINGCOST[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE);
 		}
 		else
@@ -427,6 +433,7 @@ void _defend() {
 	//timer.time("DefendFinish");
 }
 void _attack() {
+	if (int(state->building[ts19_flag].size() - 1 + my_build_request) >= buildingLimit()) return ;
 	priority_queue < heapComp > h;
 	GenRandom gr;
 	for (int i = 0; i < 2; ++i)
@@ -452,7 +459,7 @@ void _attack() {
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(nearestRoad(bdpos, t.rnum)))) {
 			can_construct[bdpos.x][bdpos.y] = false;
-			my_resource -= BUILDING_RESOURCE[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE);
+			my_resource -= int(BUILDING_RESOURCE[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE));
 			my_building_credits -= BUILDING_BUILDINGCOST[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE);
 		}
 		else
@@ -461,49 +468,37 @@ void _attack() {
 	}
 }
 
-
+void crisisValuePrint() {
+	for (int i = 1; i <= road_count; ++i)
+		debug("DEF Road #%d: %.0lf\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
+	for (int i = 1; i <= road_count; ++i)
+		debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
+	debug("\n");
+}
 
 //#############################################################################################
 //主程序
 int srand_flag = 0;
 void f_player() {
 	Timer timer;
-	debug("Age=%2d\tBuildings=%4d\tResources=%6d\n", state->age[ts19_flag], state->building[ts19_flag].size(), state->resource[ts19_flag].resource);
-	if (!srand_flag) {
-		srand_flag = 1;
-		srand((ts19_flag + 1) * time(NULL));
-	}
-	operation_count = MAX_OPERATION_PER_TURN;
-
-	getRoadNumber();
-	canConstructUpdate();
-	calcCriAttValue();
-
 	my_resource = state->resource[ts19_flag].resource;
 	my_building_credits = state->resource[ts19_flag].building_point;
-
-	/*
-	debug("\n");
-	for (int i = 0; i < 30; ++i) {
-		for (int j = 0; j < 30; ++j)
-			debug("%c", can_construct[i][j]?'#':' ');
-		debug("\n");
+	my_build_request = 0;
+	debug("Turn=%4d\tAge=%2d\tBuildings=%4zd\tResources=%6d\n", state->turn ,state->age[ts19_flag], state->building[ts19_flag].size(), state->resource[ts19_flag].resource);
+	if (!srand_flag) {
+		srand_flag = 1;
+		srand(unsigned((ts19_flag + 1) * time(NULL)));
 	}
-	debug("\n");
-	*/
+	operation_count = MAX_OPERATION_PER_TURN;
 	/*
-	for (int i = 1; i <= road_count; ++i)
-		debug("DEF Road #%d: %.0lf\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
-	for (int i = 1; i <= road_count; ++i)
-		debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
-	debug("\n");
-	*/
-
-
 	if (my_resource > (UPDATE_COST + UPDATE_COST_PLUS * state->age[ts19_flag]) * 2) {
 		_UpdateAge();
 		return;
 	}
+	*/
+	getRoadNumber();
+	canConstructUpdate();
+	calcCriAttValue();
 	int tot_programmer = 0;
 	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		if ((*i).building_type == Programmer)
@@ -518,8 +513,11 @@ void f_player() {
 			break;
 	}
 
+	timer.time("Init");
 	_defend();
+	timer.time("Def");
 	_attack();
-	//_maintain();
-	//timer.time("Main Process");
+	timer.time("Att");
+	_maintain();
+	timer.time("Main Process");
 }
