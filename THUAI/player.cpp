@@ -1,9 +1,9 @@
-//#include "stdafx.h"
+#include "stdafx.h"
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0403.20
+		0.0404.02
 	Instructions:
 		上交代码到网页上的时候请注释掉第一行
 		本地编译需要在编译设置里加上一句 /D "LOCAL"
@@ -53,6 +53,7 @@ extern bool ts19_flag;
 取进攻值最大的元素 在相应的路上建立生产建筑(升级建筑) 同时把value加上一定值 再放回优先队列
 
 码农需要一定比例
+当资源超过FRENZY_LIMIT时 置frenzy_flag为1 降低码农需求 开始爆兵
 */
 
 //#############################################################################################
@@ -151,7 +152,7 @@ const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 36, 30,
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 300, 250, 300, 280, 225, 300, 180, 450, 1000, 400, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 1e-1;	//对兵的攻击值进行一定调整 以和建筑的威胁值进行平衡
+const double SOLDIER_ATTACK_FACTOR = 5e-3;	//对兵的攻击值进行一定调整 以和建筑的威胁值进行平衡
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -162,6 +163,10 @@ const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.6, 0.5, 0.4, 0.4};
 const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
 const int MAX_TRIAL = 1;
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 1; 
+
+const int FRENZY_LIMIT = 40000;
+int frenzy_flag = 0;//0为正常  1为进入卖码农回合 2为爆兵状态
+const double FRENZY_FACTOR = 0.3;
 
 //#############################################################################################
 //函数定义
@@ -374,7 +379,7 @@ void _maintain() {
 			break;
 		if (t.second->level != state->age[ts19_flag]) {
 			upgrade(t.second->unit_id);
-			debug("Upgrade Building [%12s] %d %d\n", BUILDING_NAME[t.second->building_type], t.second->level , state->age[ts19_flag]);
+			//debug("Upgrade Building [%12s] %d %d\n", BUILDING_NAME[t.second->building_type], t.second->level , state->age[ts19_flag]);
 			my_resource -= int(BUILDING_RESOURCE[(*t.second).building_type] * (1 + state->age[ts19_flag] * AGE_INCREASE));
 			--operation_count;
 		}
@@ -525,18 +530,41 @@ void f_player() {
 	getRoadNumber();
 	canConstructUpdate();
 	calcCriAttValue();
+
+	if (my_resource >= FRENZY_LIMIT && frenzy_flag == 0)
+		frenzy_flag = 1;
+	if (my_resource < FRENZY_LIMIT / 5)
+		frenzy_flag = 0;
+
 	int tot_programmer = 0;
 	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		if ((*i).building_type == Programmer)
 			++tot_programmer;
 
-	while (tot_programmer < max(PROGRAMMER_RATIO[state->age[ts19_flag]] * state->building[ts19_flag].size(),
+	while (frenzy_flag == 0 && tot_programmer < max(PROGRAMMER_RATIO[state->age[ts19_flag]] * state->building[ts19_flag].size(),
 		PROGRAMMER_MIN_PARTITION[state->age[ts19_flag]] * (MAX_BD_NUM + MAX_BD_NUM_PLUS * state->age[ts19_flag]))) {
 		bool t = _build_programmer();
 		if (t)
 			++tot_programmer;
 		else
 			break;
+	}
+
+	if (frenzy_flag == 1) {
+		int programmer_remain = int(tot_programmer * FRENZY_FACTOR);
+		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++ i)
+			if (i->building_type == Programmer && tot_programmer > programmer_remain) {
+				sell(i->unit_id);
+				--tot_programmer;
+				--my_build_request;
+				debug("Sell Programmer\n");
+			}
+		frenzy_flag = 2;
+		return;
+	}
+	if (frenzy_flag == 2) {
+		_attack();
+		_maintain();
 	}
 
 	//timer.time("Init");
