@@ -1,4 +1,6 @@
 import os
+BD_NAME = [ '__Base', 'Shannon', 'Thevenin', 'Norton', 'Von_Neumann', 'Berners_Lee', 'Kuen_Kao', 'Turing', 'Tony_Stark', 'Bool', 'Ohm', 'Mole', 'Monte_Carlo', 'Larry_Roberts', 'Robert_Kahn', 'Musk', 'Hawkin', 'Programmer']
+FULL_HP = [10000, 15000, 20000, 25000, 30000, 35000]
 if __name__ == "__main__":
     num = input("File Number: ")
     try:
@@ -11,33 +13,34 @@ if __name__ == "__main__":
         os.mkdir(os.getcwd() + '\\%s\\'%num)
     except:
         pass
-    data = [0 for i in range(1001)]
     for line in f:
         turn_count += 1
-        false = False
+        false = False 
         true = True
-        #print(line)
-        exec(('data[%d]=' % turn_count) + line)
+        exec('D=' + line)
         filename = str(turn_count//1000)+str(turn_count//100%10)+str(turn_count//10%10)+str(turn_count%10)
         outf = open(os.getcwd() + "\\%s\\%s.txt"%(num, filename), 'w')
-        D = data[turn_count]
         for i in range(0, 2):
             outf.write('Status %d:\n\tMoney = %8d\tTech = %d\n' % (i, D['status_%d'%i]['money'], D['status_%d'%i]['tech']))
         outf.write('\n')
         for i in range(0, 2):
-            outf.write('Base %d:\n\tHP = %8f\n' % (i, D['mainbase_%d'%i]['base_HP']))
+            outf.write('Base %d:\n\tHP = %8f / %6.1f per.\n' % (i, D['mainbase_%d'%i]['base_HP'], D['mainbase_%d'%i]['base_HP']/FULL_HP[D['status_%d'%i]['tech']]*100))
         outf.write('\n')
         for i in range(0, 2):
-            outf.write('Unit %d:\n' % i)
+            outf.write('Unit %d: [%4d]\n' % (i, len(D['unit_%d' % i])))
             for sol in D['unit_%d' % i]:
                 outf.write('\t%8d\t%16s\t%6d\t%12s\n'%(sol['id'], sol['name'][12:], sol['hp'], str(sol['pos'])))
         outf.write('\n')
         for i in range(0, 2):
             outf.write('Building %d:\n' % i)
             for typ in D['buildings_%d' % i]:
-                outf.write('\t%s:\n' % typ)
+                outf.write('\t%s: [%4d]\n' % (typ, len(D['buildings_%d' % i][typ])))
                 for bd in D['buildings_%d' % i][typ]:
-                    outf.write('\t\t%8d\t%8s\t%8.0f\t%12s\t%4d\n' % (bd['id'], bd['type'], bd['hp'], str(bd['pos']), bd['level']))
+                    outf.write('\t\t%8d\t%12s\t%8.0f\t%12s\t%4d\n' % (bd['id'], BD_NAME[int(bd['type'])], bd['hp'], str(bd['pos']), bd['level']))
         outf.write('\n')
+        for i in range(0, 2):
+            outf.write('Try to Build %d:\n' % i)
+            for ins in D['instruments_%d' % i]['construct']:
+                outf.write('\t%12s\t%12s\n' % (BD_NAME[int(ins['type'])], str(ins['pos'])))
         outf.close()
         print(turn_count)
