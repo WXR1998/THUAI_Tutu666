@@ -151,7 +151,7 @@ const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 36, 30,
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 300, 250, 300, 280, 225, 300, 180, 450, 1000, 400, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 1e-1;	//对兵的攻击值进行一定调整 以和建筑的威胁值进行平衡
+const double SOLDIER_ATTACK_FACTOR = 1e-2;	//对兵的攻击值进行一定调整 以和建筑的威胁值进行平衡
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
