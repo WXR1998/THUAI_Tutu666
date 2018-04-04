@@ -120,19 +120,19 @@ const int OriginalBuildingAttribute[Building_Type][Attr_Num] = {
     {Base,              10000,  _NULL,  0,    _NULL,           BIT,       0,      _NULL, _NULL,  _NULL},
     {PRODUCTION_BUILDING, 150,  _NULL,  10,   BIT_STREAM,      BIT,       150,    15,    _NULL,  2},
     {PRODUCTION_BUILDING, 200,  _NULL,  5,    VOLTAGE_SOURCE,  CIRCUIT,   160,    16,    _NULL,  6},
-    {PRODUCTION_BUILDING, 180,  _NULL,  5,    CURRENT_SOURCE,  CIRCUIT,   160,    16,    _NULL,  6},
+    {PRODUCTION_BUILDING, 180,  _NULL,  5,    CURRENT_SOURCE,  CIRCUIT,   160,    16,    _NULL,  4},
     {PRODUCTION_BUILDING, 200,  _NULL,  15,   ENIAC,           PROCESSOR, 200,    20,    _NULL,  15},
     {PRODUCTION_BUILDING, 150,  _NULL,  20,   PACKET,          NETWORK,   250,    25,    _NULL,  3},
-    {PRODUCTION_BUILDING, 160,  _NULL,  15,   OPTICAL_FIBER,   NETWORK,   300,    30,    _NULL,  8},
+    {PRODUCTION_BUILDING, 160,  _NULL,  15,   OPTICAL_FIBER,   NETWORK,   400,    40,    _NULL,  6},
     {PRODUCTION_BUILDING, 250,  _NULL,  15,   TURING_MACHINE,  AI,        600,    60,    _NULL,  20},
     {PRODUCTION_BUILDING, 220, _NULL,   10,   ULTRON,          AI,        600,    60,    _NULL,  20},
 
-    {DEFENSIVE_BUILDING,  250,  16,     36,   DATA,            BIT,       150,    15,    0,      1},
+    {DEFENSIVE_BUILDING,  200,  16,     32,   DATA,            BIT,       150,    15,    0,      1},
     {DEFENSIVE_BUILDING,  320,  20,     30,   SUBSTANCE,       CIRCUIT,   200,    20,    6,      3},
-    {DEFENSIVE_BUILDING,  250,  4,      60,   DATA,            PROCESSOR, 225,    22,    0,      1},
-    {DEFENSIVE_BUILDING,  350,  25,     40,   SUBSTANCE,       ALGORITHM, 200,    20,    0,      2},
-    {DEFENSIVE_BUILDING,  220,  6,      50,   ALL,             NETWORK,   250,    25,    8,      1},
-    {DEFENSIVE_BUILDING,  520,  5,      36,   DATA,            NETWORK,   450,    45,    0,      1},
+    {DEFENSIVE_BUILDING,  250,  4,      36,   DATA,            PROCESSOR, 225,    22,    0,      1},
+    {DEFENSIVE_BUILDING,  350,  25,     50,   SUBSTANCE,       ALGORITHM, 200,    20,    0,      2},
+    {DEFENSIVE_BUILDING,  220,  6,      40,   ALL,             NETWORK,   250,    25,    8,      1},
+    {DEFENSIVE_BUILDING,  520,  5,      35,   DATA,            NETWORK,   450,    45,    0,      1},
     {DEFENSIVE_BUILDING,  1000, 0,      24,   ALL,             AI,        500,    50,    0,      1},
     {DEFENSIVE_BUILDING,  480, INT_MAX, 20,   ALL,             AI,        500,    50,    2,      2},
 
@@ -142,12 +142,12 @@ const int OriginalBuildingAttribute[Building_Type][Attr_Num] = {
 const int OriginalSoldierAttribute[Soldier_Type][Soldier_Attr_Num] = {
     {DATA,      BUILDING_ATTACK,        16,     10,     16,     12},
     {SUBSTANCE, BUILDING_ATTACK,        60,     18,     24,     8},
-    {SUBSTANCE, BASE_ATTACK,            100,    160,    6,      15},
+    {SUBSTANCE, BASE_ATTACK,            40,     160,    3,      15},
     {SUBSTANCE, MOVING_ATTACK,          550,    12,     10,     4},
-    {DATA,      BASE_ATTACK,            70,     300,    6,      16},
+    {DATA,      BASE_ATTACK,            50,     300,    3,      16},
     {SUBSTANCE, BUILDING_ATTACK,        40,     25,     40,     12},
     {DATA,      MOVING_ATTACK,          850,    8,      12,     3},
-    {SUBSTANCE, BUILDING_ATTACK,        100,    500,    20,     8}
+    {SUBSTANCE, BUILDING_ATTACK,        200,    500,    20,     8}
 };
 
 
@@ -176,9 +176,10 @@ struct Soldier {
     Position pos;
     int flag;
     int unit_id;
+    int level;
 
 	Soldier() {};
-	Soldier(SoldierName soldier_name, int heal, Position pos, int flag, int unit_id) :soldier_name(soldier_name),heal(heal),pos(pos),flag(flag),unit_id(unit_id){};
+	Soldier(SoldierName soldier_name, int heal, Position pos, int flag, int unit_id,int level) :soldier_name(soldier_name),heal(heal),pos(pos),flag(flag),unit_id(unit_id),level(level){};
 };
 
 struct Building {
