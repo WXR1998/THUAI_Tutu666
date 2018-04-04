@@ -3,10 +3,10 @@
 	Author:
 		Tutu666
 	Version:
-		0.0404.21
+		0.0405.03
 	Instructions:
-		上交代码到网页上的时候请注释掉第一行
-		本地编译需要在编译设置里加上一句 /D "LOCAL"
+		When upload code to the server, please comment the first line.
+		To enable debugging print, add '/D "LOCAL"' in complie settings.
 */
 #include <vector>
 #include <string>
@@ -33,38 +33,32 @@ extern State* state;
 extern int** ts19_map;
 extern bool ts19_flag;
 /*
-针对自己所在位置的问题 如果ts19_flag==1 需要把所有的信息中的position全部取反 该操作称为坐标变换
-坐标变换只需要对state接口得到的数据上使用一次即可
-因为ts19_map是中心对称的 所以不需要对ts19_map进行坐标变换
-需要对路径进行编号 从上往下分别为1到road_count
+Aim to unify the expression of position while holding either flag, we define an operation called 
+position transformation. When holding flag 1, we should inverse all the position informations 
+from 'state'.
+Position transformation should be used ONLY ONCE when getting data from state.
+We don't need to transform ts19_map informations because it is central-symmetrical.
 
-每条路径上分别有一个实体威胁值(0)和数据威胁值(1)
-每条路径上分别有一个实体攻击值(0)和数据攻击值(1)
-每次取威胁值最高的一路防御 取攻击值最高的一路进攻
-当所有路的威胁值都低于某个值时 可以开始 造码农 或者 提升科技时代 或者 发动进攻
-码农数量上限为当前时代建筑上限乘上一个系数
-科技时代上限为对方时代加上一定系数
+We number the roads by certain order, to organize defence and attack. On every road there are 
+values: Realbody Crisis Value(RCV), Data Crisis Value(DCV), Realbody Attack Value(RAV), Data 
+Attack Value(DAV).
 
-优先建造新的建筑
-升级时代之后 优先消耗完当前turn的建筑点 其次优先把建筑升级到当前时代
+Take the road which has the highest CV to defend function, while take the road which has the 
+highest AV to attack function.
 
-把所有路做成pair<int, double>(roadnum, value)，插入优先队列(大顶堆)
-取威胁值最大的元素 在相应的路上建立防御建筑 同时把value减去一定值 再放回优先队列
-取进攻值最大的元素 在相应的路上建立生产建筑(升级建筑) 同时把value加上一定值 再放回优先队列
-
-码农需要一定比例
+The quantity of programmers is controlled by a series of factors and current building limit.
 */
 
 //#############################################################################################
-//辅助类定义
+//Aux. class definition
 class GenRandom {
 	/*
-	用于按照一定概率产生随机数
-	_rand()							按照当前概率产生随机数
-	addItem(pair<int, int>)			插入一个数据项<id, prob>
+	To generate random number by certain probablity
+	_rand()							Generate random number
+	addItem(pair<int, int>)			Insert a data element <id, prob>
 	*/
 	vector <pair<int, int> > t;
-	int sum;
+	long long sum;
 public:
 	void clear() {
 		t.clear();
@@ -78,9 +72,9 @@ public:
 		t.push_back(d);
 		sum += d.second;
 	}
-	int _rand() {//按照prob的可能性  返回id
+	int _rand() {
 		if (sum == 0) return -1;
-		int tmp = (rand()*rand()) % sum + 1;
+		long long tmp = ((rand()%10000)*(rand()%10000)) % sum + 1;
 		for (auto i = t.begin(); i != t.end(); ++i) {
 			tmp -= (*i).second;
 			if (tmp <= 0)
@@ -91,9 +85,6 @@ public:
 };
 
 struct heapComp {
-	/*
-	用于堆的比较
-	*/
 	double val;
 	int typ, rnum;
 	heapComp(double _val, int _typ, int _rnum) {
@@ -109,8 +100,8 @@ struct heapComp {
 int timer_count;
 class Timer {
 	/*
-	用于计时
-	time()		调用即输出一次距离上次调用的间隔时长
+	Used for timing.
+	time()		Output the time interval from last calling of this method
 	*/
 	int tim, step;
 public:
@@ -129,59 +120,56 @@ public:
 };
 
 //#############################################################################################
-//常量定义
+//const values definitions
 
 const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
 "Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
-const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };//建筑需要多少资源
-const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };//建筑需要多少建造力 TODO
+const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
+const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[18] = {0, 1, 4, 8, 8, 25, 30, 20, 30, 5, 10, 10, 30, 40, 20, 8, 20, 1};//建筑偏好 影响建造建筑的可能性
+const int BUILDING_BIAS[18] = {0, 1, 4, 8, 8, 25, 30, 20, 30, 5, 10, 10, 30, 40, 20, 8, 20, 1};//The probability of build the building
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 15, 3 };//推塔 冲锋 抗线
+const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 15, 3 };//push tower / charge / tank
 
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 20 * 2, 4 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
-const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//建筑是数据型防御(1)还是实体型防御(0)还是全部(2)
-const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };//建筑的攻击范围/出兵范围
+const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
+const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 1e-2;	//对兵的攻击值进行一定调整 以和建筑的威胁值进行平衡
+const double SOLDIER_ATTACK_FACTOR = 1e-1;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
-const double MAX_CRISIS = 0;
-const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};	//当所有路的attack值都大于这个值的时候 可以开始发展 否则进攻
+const double MAX_CRISIS = -1e4;
+const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};
 const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.6, 0.5, 0.4, 0.4};
 const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.6, 0.5, 0.4, 0.4};
 const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 1; 
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 4; 
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
 const double FRENZY_FACTOR = 0.3;
 
 //#############################################################################################
-//函数定义
+//function definitions
 
-int operation_count;	//每回合的操作数
-double my_building_credits;	//每回合的建造力
-int my_resource;	//本轮的资源
-int my_build_request;	//本轮的建筑请求数
+int operation_count;	//Operation limit per turn
+double my_building_credits;	//Building credits per turn
+int my_resource;	//My resource now
+int my_build_request;	//Building requests this turn
 bool can_construct[MAP_SIZE][MAP_SIZE];
 
 int buildingLimit() {
 	return MAX_BD_NUM + MAX_BD_NUM_PLUS * state->age[ts19_flag];
 }
 bool canConstruct(Position p) {
-	/*
-	返回一个位置是否能够建造建筑
-	*/
 	return can_construct[p.x][p.y];
 }
 
@@ -193,7 +181,7 @@ Position inversePosition(Position p) {
 }
 Position Pos(Position p) {
 	/*
-	返回变换之后的坐标
+		Returns the position after inversion
 	*/
 	return ts19_flag ? inversePosition(p) : p;
 }
@@ -209,7 +197,6 @@ bool _construct(BuildingType a, Position b, Position c = Position(0, 0)) {
 	construct(a, b, c);
 	return true;
 }
-extern bool ts19_updageAge;
 bool _UpdateAge() {
 	if (operation_count <= 0) return false;
 	if (state->age[ts19_flag] == 5) return false;
@@ -232,7 +219,7 @@ bool positionIsValid(Position p) {
 }
 
 int road_number[MAP_SIZE][MAP_SIZE];
-vector <Position> road_grid[10];//每条路的格子
+vector <Position> road_grid[10];//The grid of every road TODO
 bool road_number_flag = false;
 int road_count = 0;
 void getRoadNumberDfs(Position p, int number) {
@@ -244,7 +231,8 @@ void getRoadNumberDfs(Position p, int number) {
 }
 void getRoadNumber() {
 	/*
-	该函数用于给路编号  只会运行一次
+		Run only one time.
+		Used of number the roads.
 	*/
 	if (road_number_flag) return;
 	road_number_flag = true;
@@ -260,6 +248,14 @@ void getRoadNumber() {
 				road_grid[road_number[i][j]].push_back(Position(i, j));
 }
 
+void forbidConstruct(Position p) {
+	for (int j = 0; j < 4; ++j) {
+		int px = p.x + dir[j][0], py = p.y + dir[j][1];
+		if (positionIsValid(Position(px, py)))
+			can_construct[px][py] = false;
+	}
+	can_construct[p.x][p.y] = false;
+}
 void canConstructUpdate() {
 	for (int i = 0; i < MAP_SIZE; ++i)
 		for (int j = 0; j < MAP_SIZE; ++j)
@@ -278,16 +274,17 @@ void canConstructUpdate() {
 		for (int j = 0; j < MAP_SIZE; ++j)
 			if (ts19_map[i][j] != 0)
 				can_construct[i][j] = false;
-	for (int j = 0; j < 2; ++j)
-		for (auto i = state->building[j].begin(); i != state->building[j].end(); ++i)
-			can_construct[Pos((*i).pos).x][Pos((*i).pos).y] = false;
+	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
+		can_construct[Pos((*i).pos).x][Pos((*i).pos).y] = false;
+	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
+		forbidConstruct(Pos(i->pos));
 }
 
 
-double crisis_value[2][2][10];//0为对方对我们的威胁值 1为我们的攻击值
+double crisis_value[2][2][10];//[0] indicates crisis value. [1] indicates attack value.
 double soldierCrisisValue(Soldier s, int t) {
 	/*
-	返回兵的威胁值 t为0或1 为数据或实体威胁值
+		Returns the power of a soldier. t=0/1 indicates data or realbody.
 	*/
 	int type = s.soldier_name;
 	return s.heal * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] *
@@ -298,8 +295,8 @@ int pos_cover_grid[MAP_SIZE][MAP_SIZE][60][8];
 bool pos_cover_grid_vis[MAP_SIZE][MAP_SIZE][60][8];
 int posCoverGrid(Position p, int range, int roadnum) {
 	/*
-	给定一个位置和距离，求这个位置上能覆盖多少个roadnum路上的点
-	由于这个函数的计算比较复杂 重复计算将花费大量时间 故采用记忆化的方式
+		For a certain position and distance, how many positions of roadnum can it cover?
+		Due to heavy calculation, we use memorization to accelerate.
 	*/
 	if (pos_cover_grid_vis[p.x][p.y][range][roadnum])
 		return pos_cover_grid[p.x][p.y][range][roadnum];
@@ -316,7 +313,7 @@ int posCoverGrid(Position p, int range, int roadnum) {
 }
 double buildingCrisisValue(Building b, int t, int roadnum) {
 	/*
-	返回建筑对某一路的威胁值 t为0或1
+		Returns the power of a building for one road. t=0/1 indicates data or realbody.
 	*/
 	int type = b.building_type, grid = 0, range = BUILDING_ATTACK_RANGE[b.building_type], typeFactor;
 	typeFactor = (_BUILDING_TYPE[type] == 2) ? 1 : (t == _BUILDING_TYPE[type]);
@@ -325,10 +322,13 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 }
 void calcCriAttValue() {
 	/*
-	威胁值的计算方式：该路上 敌方兵的威胁值之和 - 该路上我方防御建筑威胁值之和
-	攻击值的计算方式：该路上 我方兵的威胁值之和 - 该路上敌方防御建筑威胁值之和
+		CV: Enemy soldier CV - My building CV
+		AV: My soldier CV - Enemy building CV
 	*/
-	memset(crisis_value, 0, sizeof crisis_value);
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 2; ++j)
+			for (int k = 1; k <= road_count; ++k)
+				crisis_value[i][j][k] = 0.0;
 	for (auto i = state->soldier[!ts19_flag].begin(); i != state->soldier[!ts19_flag].end(); ++i)
 		for (int j = 0; j < 2; ++j) {
 			crisis_value[0][j][road_number[Pos((*i).pos).x][Pos((*i).pos).y]] += soldierCrisisValue(*i, j);
@@ -395,7 +395,7 @@ bool _build_a_programmer() {
 		for (int j = 0; j < 20; ++j)
 			if (canConstruct(Position(i, j)))
 				if (_construct(Programmer, Pos(Position(i, j)))) {
-					can_construct[i][j] = false;
+					forbidConstruct(Position(i, j));
 					my_resource -= BUILDING_RESOURCE[Programmer];
 					my_building_credits -= BUILDING_BUILDINGCOST[Programmer];
 					return true;
@@ -419,11 +419,11 @@ void _build_programmer() {
 
 Position nearest_road[MAP_SIZE][MAP_SIZE][10];
 bool nearest_road_vis[MAP_SIZE][MAP_SIZE][10];
-Position nearestRoad(Position p, int roadnum) {
+Position nearestRoad(Position p, int roadnum, int LIM = 20) {
 	if (nearest_road_vis[p.x][p.y][roadnum])
 		return nearest_road[p.x][p.y][roadnum];
 	nearest_road_vis[p.x][p.y][roadnum] = true;
-	for (int range = 1; range <= 20; ++range)
+	for (int range = 1; range <= LIM; ++range)
 		for (int i = -range; i <= range; ++i)
 			for (int j = -range + abs(i); j <= -abs(i) + range; ++j)
 				if (positionIsValid(Position(p.x + i, p.y + j)))
@@ -447,28 +447,30 @@ void _defend() {
 		for (int i = 9; i < 17; ++i)
 			if ((_BUILDING_TYPE[i] == 2 || _BUILDING_TYPE[i] == t.typ) && BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag])
 				gr.addItem(make_pair(i, BUILDING_BIAS[i]));
-		int bdtype = gr._rand();//钦定建造建筑的类型
+		int bdtype = gr._rand();
 		gr.clear();
 		//timer.time("Heap Processing");
 		/*
-		为了节省运算时间 防御建筑只能建在路旁DEFEND_BUILDING_TO_ROAD_DISTANCE格距离之内
+			To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
 		*/
 		for (int i = 0; i < MAP_SIZE; ++i)
 			for (int j = 0; j < MAP_SIZE; ++j)
-				if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), t.rnum), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
-					gr.addItem(make_pair(i * MAP_SIZE + j, (i+j)*posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum)));//防御建筑尽量造在外面
+				if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), t.rnum, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
+					gr.addItem(make_pair(i * MAP_SIZE + j, int(max(i, j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum))+1))));//Defensive building prefers far from base
 		//timer.time("Heap Processing2");
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 		if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
-			can_construct[bdpos.x][bdpos.y] = false;
+			forbidConstruct(bdpos);
 			Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype], Pos(bdpos), ts19_flag, 0, 0);
 			t.val -= buildingCrisisValue(tmpbd, t.typ, t.rnum);
 			my_resource -= int(BUILDING_RESOURCE[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE));
 			my_building_credits -= int(BUILDING_BUILDINGCOST[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE));
 		}
-		else
+		else {
 			break;
+			//fatal_error = 1;
+		}
 		h.push(t);
 	}
 	//timer.time("DefendFinish");
@@ -485,17 +487,18 @@ void _attack() {
 		for (int i = 1; i < 9; ++i)
 			if (BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag]) 
 				gr.addItem(make_pair(i, BUILDING_BIAS[i]));
-		int bdtype = gr._rand();//钦定建造建筑的类型
+		int bdtype = gr._rand();
 		if (bdtype == -1) continue;
 		gr.clear();
 		for (int i = 0; i < MAP_SIZE; ++i)
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)))
-					gr.addItem(make_pair(i * MAP_SIZE + j, (40000/(i+j))*posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum)));//攻击建筑尽量造在里面
+					if (nearestRoad(Position(i, j), t.rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
+						gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
-		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(nearestRoad(bdpos, t.rnum)))) {
-			can_construct[bdpos.x][bdpos.y] = false;
+		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(nearestRoad(bdpos, t.rnum, BUILDING_ATTACK_RANGE[bdtype])))) {
+			forbidConstruct(bdpos);
 			my_resource -= BUILDING_RESOURCE[bdtype];
 			my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
 		}
@@ -541,7 +544,7 @@ void _frenzy_mode() {
 }
 
 //#############################################################################################
-//主程序
+//Main
 int srand_flag = 0;
 void f_player() {
 	Timer timer;
@@ -558,13 +561,23 @@ void f_player() {
 	canConstructUpdate();
 	calcCriAttValue();
 
+	/*
+	for (int i = 0; i < 30; ++i) {
+		debug("\n");
+		for (int j = 0; j < 30; ++j)
+			debug("%c", can_construct[i][j]?'#':'.');
+	}
+	debug("\n");
+	*/
+
+	//if (fatal_error) exit(1);
 	_frenzy_mode();
 	if (frenzy_flag == 0) {
 		_update_age();
 		_build_programmer();
+		_defend();
 		_upgradeBuilding();
 		_maintain();
-		_defend();
 		_attack();
 	}
 }
