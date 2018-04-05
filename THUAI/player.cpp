@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0405.03
+		0.0406.00
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -134,7 +134,7 @@ const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 15, 3 };//push tower / charge / tank
+const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 50, 3 };//push tower / charge / tank
 
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 20 * 2, 4 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
@@ -142,11 +142,11 @@ const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30,
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 1e-1;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 4e-1;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
-const double MAX_CRISIS = -1e4;
+const double MAX_CRISIS = 0;
 const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};
 const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.6, 0.5, 0.4, 0.4};
 const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.6, 0.5, 0.4, 0.4};
