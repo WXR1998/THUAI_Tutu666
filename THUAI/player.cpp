@@ -127,14 +127,14 @@ const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", 
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[18] = {0, 1, 4, 8, 8, 25, 30, 20, 30, 5, 10, 10, 30, 40, 20, 8, 20, 1};//The probability of build the building
+const int BUILDING_BIAS[18] = {0, 1, 4, 8, 8, 25, 30, 20, 30, 5, 30, 10, 30, 40, 20, 8, 20, 1};//The probability of build the building
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 50, 3 };//push tower / charge / tank
+const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 40, 10 };//push tower / charge / tank
 
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 20 * 2, 4 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
@@ -142,7 +142,7 @@ const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30,
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 4e-1;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 2e1;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -280,17 +280,6 @@ void canConstructUpdate() {
 		forbidConstruct(Pos(i->pos));
 }
 
-
-double crisis_value[2][2][10];//[0] indicates crisis value. [1] indicates attack value.
-double soldierCrisisValue(Soldier s, int t) {
-	/*
-		Returns the power of a soldier. t=0/1 indicates data or realbody.
-	*/
-	int type = s.soldier_name;
-	return s.heal * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] *
-		log(SOLDIER_ATTACKRANGE[type] + 1) * SOLDIER_SPEED[type] * (t == _SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR;
-}
-
 int pos_cover_grid[MAP_SIZE][MAP_SIZE][60][8];
 bool pos_cover_grid_vis[MAP_SIZE][MAP_SIZE][60][8];
 int posCoverGrid(Position p, int range, int roadnum) {
@@ -311,6 +300,16 @@ int posCoverGrid(Position p, int range, int roadnum) {
 	pos_cover_grid_vis[p.x][p.y][range][roadnum] = true;
 	return pos_cover_grid[p.x][p.y][range][roadnum] = ans;
 }
+
+double crisis_value[2][2][10];//[0] indicates crisis value. [1] indicates attack value.
+double soldierCrisisValue(Soldier s, int t) {
+	/*
+		Returns the power of a soldier. t=0/1 indicates data or realbody.
+	*/
+	int type = s.soldier_name;
+	return log(s.heal + 1) * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] *
+		log(SOLDIER_ATTACKRANGE[type] + 1) * log(SOLDIER_SPEED[type]) * (t == _SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR;
+}
 double buildingCrisisValue(Building b, int t, int roadnum) {
 	/*
 		Returns the power of a building for one road. t=0/1 indicates data or realbody.
@@ -318,7 +317,6 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 	int type = b.building_type, grid = 0, range = BUILDING_ATTACK_RANGE[b.building_type], typeFactor;
 	typeFactor = (_BUILDING_TYPE[type] == 2) ? 1 : (t == _BUILDING_TYPE[type]);
 	return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * posCoverGrid(Pos(b.pos), range, roadnum) * typeFactor;
-
 }
 void calcCriAttValue() {
 	/*
@@ -510,9 +508,9 @@ void _attack() {
 
 void crisisValuePrint() {
 	for (int i = 1; i <= road_count; ++i)
-		debug("DEF Road #%d: %.0lf\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
-	for (int i = 1; i <= road_count; ++i)
-		debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
+		debug("Crisis Value of Road #%d: %.0lf\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
+	//for (int i = 1; i <= road_count; ++i)
+	//	debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
 	debug("\n");
 }
 
@@ -551,7 +549,7 @@ void f_player() {
 	my_resource = state->resource[ts19_flag].resource;
 	my_building_credits = state->resource[ts19_flag].building_point;
 	my_build_request = 0;
-	debug("Turn=%4d\tAge=%2d\tBuildings=%4zd\tResources=%6d\n", state->turn ,state->age[ts19_flag], state->building[ts19_flag].size() - 1, state->resource[ts19_flag].resource);
+	debug("\nTurn=%4d\tAge=%2d\tBuildings=%4zd\tResources=%6d\n", state->turn ,state->age[ts19_flag], state->building[ts19_flag].size() - 1, state->resource[ts19_flag].resource);
 	if (!srand_flag) {
 		srand_flag = 1;
 		srand(unsigned((ts19_flag + 1) * time(NULL)));
@@ -560,6 +558,27 @@ void f_player() {
 	getRoadNumber();
 	canConstructUpdate();
 	calcCriAttValue();
+
+	/*
+	crisisValuePrint();
+
+	int vis[20] = { 0 };
+	for (auto i = state->soldier[ts19_flag].begin(); i != state->soldier[ts19_flag].end(); ++i) 
+		if (!vis[i->soldier_name]) {
+			debug("Sol %d, %.0lf\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
+			vis[i->soldier_name] = 1;
+		}
+	memset(vis, 0, sizeof vis);
+	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i) 
+		if (!vis[i->building_type]) {
+			double ans = 0;
+			for (int j = 1; j <= road_count; ++j)
+				ans += buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j);
+			if (ans > 1)
+				debug("Bud %d, %.0lf\n", i->building_type, ans);
+			vis[i->building_type] = 1;
+		}
+		*/
 
 	/*
 	for (int i = 0; i < 30; ++i) {
