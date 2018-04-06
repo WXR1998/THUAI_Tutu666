@@ -1,9 +1,9 @@
-//#include "stdafx.h"
+#include "stdafx.h"
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0406.12
+		0.0406.16
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -51,6 +51,46 @@ The quantity of programmers is controlled by a series of factors and current bui
 New issue: While enemy soldier are distributed too average, we have to recalculate the crisis value
 of defensive buildings.
 */
+
+
+//#############################################################################################
+//const values definitions
+
+const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
+"Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
+const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
+const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
+const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
+const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30, 5, 30, 10, 30, 30, 30, 8, 20, 1};//The probability of build the building
+
+const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
+const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
+const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
+const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
+const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
+const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 5e1, 1e1 };//push tower / charge / tank
+
+const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 60 * 2, 10 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
+const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
+const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
+const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
+const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
+
+const double SOLDIER_ATTACK_FACTOR = 3e0;	//Adjust the power of soldier, to balance the power of buildings
+
+const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
+const int MAX_OPERATION_PER_TURN = 50;
+const double MAX_CRISIS = 0;
+const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};
+const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.6, 0.5, 0.4, 0.4};
+const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.6, 0.5, 0.4, 0.4};
+const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 4; 
+
+const int FRENZY_LIMIT = 50000;
+int frenzy_flag = 0;
+const double FRENZY_FACTOR = 0.3;
+const double ROAD_DEFENCE_FACTOR = 1e-1;	//When not on major road, the crisis factor should mult.
 
 //#############################################################################################
 //Aux. class definition
@@ -121,45 +161,6 @@ public:
 		--timer_count;
 	}
 };
-
-//#############################################################################################
-//const values definitions
-
-const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
-"Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
-const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
-const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
-const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[18] = {0, 1, 4, 8, 8, 25, 30, 20, 30, 5, 30, 10, 30, 40, 20, 8, 20, 1};//The probability of build the building
-
-const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
-const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
-const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
-const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
-const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 7, 10 };//push tower / charge / tank
-
-const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 20 * 2, 4 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
-const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
-const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
-const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
-const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
-
-const double SOLDIER_ATTACK_FACTOR = 2e0;	//Adjust the power of soldier, to balance the power of buildings
-
-const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
-const int MAX_OPERATION_PER_TURN = 50;
-const double MAX_CRISIS = 0;
-const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};
-const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.6, 0.5, 0.4, 0.4};
-const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.6, 0.5, 0.4, 0.4};
-const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 4; 
-
-const int FRENZY_LIMIT = 50000;
-int frenzy_flag = 0;
-const double FRENZY_FACTOR = 0.3;
-const double ROAD_DEFENCE_FACTOR = 1e-1;	//When not on major road, the crisis factor should mult.
 
 //#############################################################################################
 //function definitions
@@ -310,6 +311,8 @@ double soldierCrisisValue(Soldier s, int t) {
 	/*
 		Returns the power of a soldier. t=0/1 indicates data or realbody.
 	*/
+	int dis_enemy = distance(s.pos, Position(199, 199)), dis_mybase = distance(s.pos, Position(0, 0));
+	if (dis_enemy >= 60 && dis_enemy <= 140 || dis_mybase >= 60 && dis_mybase <= 140); else return 0;
 	int type = s.soldier_name;
 	return log(s.heal + 1) * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] *
 		log(SOLDIER_ATTACKRANGE[type] + 1) * log(SOLDIER_SPEED[type]) * (t == _SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR;
@@ -386,7 +389,6 @@ void _maintain() {
 		if ((*i).heal < full_hp * 0.9)
 			h.push(make_pair(-(*i).heal / full_hp, i));
 	}
-
 
 	while (!h.empty() && operation_count > 0) {
 		auto t = h.top(); h.pop();
@@ -465,7 +467,7 @@ void _defend() {
 		for (int i = 0; i < MAP_SIZE; ++i)
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), t.rnum, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
-					gr.addItem(make_pair(i * MAP_SIZE + j, int(max(i, j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum))+1))));//Defensive building prefers far from base
+					gr.addItem(make_pair(i * MAP_SIZE + j, int((i+j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum))+1))));//Defensive building prefers far from base
 		//timer.time("Heap Processing2");
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
@@ -473,8 +475,8 @@ void _defend() {
 			forbidConstruct(bdpos);
 			Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype], Pos(bdpos), ts19_flag, 0, 0);
 			t.val -= buildingCrisisValue(tmpbd, t.typ, t.rnum);
-			my_resource -= int(BUILDING_RESOURCE[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE));
-			my_building_credits -= int(BUILDING_BUILDINGCOST[bdtype] * (1 + state->age[ts19_flag] * AGE_INCREASE));
+			my_resource -= BUILDING_RESOURCE[bdtype];
+			my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
 		}
 		else {
 			break;
@@ -574,7 +576,7 @@ void f_player() {
 
 	int vis[20] = { 0 };
 	for (auto i = state->soldier[ts19_flag].begin(); i != state->soldier[ts19_flag].end(); ++i) 
-		if (!vis[i->soldier_name]) {
+		if (!vis[i->soldier_name] &&  soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1) > 1) {
 			debug("Sol %d, %.0lf\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
 			vis[i->soldier_name] = 1;
 		}
