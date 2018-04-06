@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0406.00
+		0.0406.12
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -47,6 +47,9 @@ Take the road which has the highest CV to defend function, while take the road w
 highest AV to attack function.
 
 The quantity of programmers is controlled by a series of factors and current building limit.
+
+New issue: While enemy soldier are distributed too average, we have to recalculate the crisis value
+of defensive buildings.
 */
 
 //#############################################################################################
@@ -134,7 +137,7 @@ const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 40, 10 };//push tower / charge / tank
+const int SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 10, 7, 10 };//push tower / charge / tank
 
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 20 * 2, 4 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
@@ -142,7 +145,7 @@ const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30,
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 2e1;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 2e0;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -156,6 +159,7 @@ const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 4;
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
 const double FRENZY_FACTOR = 0.3;
+const double ROAD_DEFENCE_FACTOR = 1e-1;	//When not on major road, the crisis factor should mult.
 
 //#############################################################################################
 //function definitions
@@ -316,12 +320,19 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 	*/
 	int type = b.building_type, grid = 0, range = BUILDING_ATTACK_RANGE[b.building_type], typeFactor;
 	typeFactor = (_BUILDING_TYPE[type] == 2) ? 1 : (t == _BUILDING_TYPE[type]);
-	return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * posCoverGrid(Pos(b.pos), range, roadnum) * typeFactor;
+	pair<int, int> nearest_road = make_pair(0, 0);
+	for (int i = 1; i <= road_count; ++i)
+		if (posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i) > nearest_road.first)
+			nearest_road = make_pair(posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i), i);
+	return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * posCoverGrid(Pos(b.pos), range, roadnum) * typeFactor *
+		(roadnum != nearest_road.second ? ROAD_DEFENCE_FACTOR : 1);
 }
 void calcCriAttValue() {
 	/*
 		CV: Enemy soldier CV - My building CV
 		AV: My soldier CV - Enemy building CV
+		Every enemy defensive building have a major defend road. Not on this road it's CV 
+		should be decrease.
 	*/
 	for (int i = 0; i < 2; ++i)
 		for (int j = 0; j < 2; ++j)
@@ -559,7 +570,6 @@ void f_player() {
 	canConstructUpdate();
 	calcCriAttValue();
 
-	/*
 	crisisValuePrint();
 
 	int vis[20] = { 0 };
@@ -578,16 +588,7 @@ void f_player() {
 				debug("Bud %d, %.0lf\n", i->building_type, ans);
 			vis[i->building_type] = 1;
 		}
-		*/
 
-	/*
-	for (int i = 0; i < 30; ++i) {
-		debug("\n");
-		for (int j = 0; j < 30; ++j)
-			debug("%c", can_construct[i][j]?'#':'.');
-	}
-	debug("\n");
-	*/
 
 	//if (fatal_error) exit(1);
 	_frenzy_mode();
