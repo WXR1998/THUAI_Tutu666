@@ -1,4 +1,4 @@
-#include "stdafx.h"
+//#include "stdafx.h"
 /*
 	Author:
 		Tutu666
@@ -68,15 +68,15 @@ const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 5e1, 1e1 };//push tower / charge / tank
+const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 5e0, 1e1 };//push tower / charge / tank
 
-const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 60 * 2, 10 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
+const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 20 * 2, 10 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 3e0;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 1e1;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -445,13 +445,50 @@ Position nearestRoad(Position p, int roadnum, int LIM = 20) {
 
 void _defend() {
 	priority_queue < heapComp > h;
+	while (!h.empty()) h.pop();
 	GenRandom gr;
 	Timer timer;
+	/*
 	for (int i = 0; i < 2; ++i)
 		for (int j = 1; j <= road_count; ++j) {
 			h.push(heapComp(crisis_value[0][i][j], i, j));
 			//debug("%lf %d %d\n", crisis_value[0][i][j], i, j);
 		}
+		*/
+	for (; operation_count > 0; ) {
+		int exit_flag = 0;
+		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
+			for (int r = 1; r <= road_count && operation_count > 0; ++r)
+				if (crisis_value[0][typ][r] > MAX_CRISIS) {
+					exit_flag = 1;
+					gr.clear();
+					for (int p = 9; p < 17; ++p)
+						if ((_BUILDING_TYPE[p] == 2 || _BUILDING_TYPE[p] == typ) && BUILDING_UNLOCK_AGE[p] <= state->age[ts19_flag])
+							gr.addItem(make_pair(p, BUILDING_BIAS[p]));
+					int bdtype = gr._rand();
+					gr.clear();
+					//To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
+					for (int i = 0; i < MAP_SIZE; ++i)
+						for (int j = 0; j < MAP_SIZE; ++j)
+							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
+								gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)) + 1))));//Defensive building prefers far from base
+					int tmppos = gr._rand();
+					Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
+					if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
+						forbidConstruct(bdpos);
+						Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype], Pos(bdpos), ts19_flag, 0, 0);
+						crisis_value[0][typ][r] -= buildingCrisisValue(tmpbd, typ, r);
+						my_resource -= BUILDING_RESOURCE[bdtype];
+						my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
+					}
+					else {
+						exit_flag = 0;
+						break;
+					}
+				}
+		if (!exit_flag) break;
+	}
+	/*
 	while (h.top().val > MAX_CRISIS && operation_count > 0) {
 		heapComp t = h.top(); h.pop();
 		gr.clear();
@@ -461,9 +498,7 @@ void _defend() {
 		int bdtype = gr._rand();
 		gr.clear();
 		//timer.time("Heap Processing");
-		/*
-			To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
-		*/
+			//To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
 		for (int i = 0; i < MAP_SIZE; ++i)
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), t.rnum, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
@@ -480,10 +515,10 @@ void _defend() {
 		}
 		else {
 			break;
-			//fatal_error = 1;
 		}
 		h.push(t);
 	}
+*/
 	//timer.time("DefendFinish");
 }
 void _attack() {
