@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0407.12
+		0.0408.01
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -61,22 +61,31 @@ const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", 
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30, 5, 20, 10, 30, 40, 30, 8, 20, 1};//The probability of build the building
+const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30, 
+5,		//Bool
+8,		//Ohm
+8,		//Mole
+20,		//Monte Carlo
+30,		//Larry Roborts
+30,		//Robort Kahn
+10,		//Musk
+20,		//Hawkin
+1 };//The probability of build the building
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 2e0, 1e1 };//push tower / charge / tank
+const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 1e1 };//push tower / charge / tank
 
-const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 100, 80, 200, 100, 120, 100, 400};
+const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 120, 80, 140, 100, 120, 100, 400};
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 5e1;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 8e1;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -327,7 +336,8 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 	for (int i = 1; i <= road_count; ++i)
 		if (posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i) > nearest_road.first)
 			nearest_road = make_pair(posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i), i);
-	return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * posCoverGrid(Pos(b.pos), range, roadnum) * typeFactor *
+	//return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * posCoverGrid(Pos(b.pos), range, roadnum) * typeFactor *
+	return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * range * typeFactor *
 		((roadnum != nearest_road.second) ? ROAD_DEFENCE_FACTOR : 1);
 }
 void calcCriAttValue() {
