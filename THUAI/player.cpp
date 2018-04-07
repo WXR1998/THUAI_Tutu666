@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0406.16
+		0.0407.12
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -61,22 +61,22 @@ const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", 
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30, 5, 30, 10, 30, 30, 30, 8, 20, 1};//The probability of build the building
+const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30, 5, 20, 10, 30, 40, 30, 8, 20, 1};//The probability of build the building
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 5e0, 1e1 };//push tower / charge / tank
+const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 2e0, 1e1 };//push tower / charge / tank
 
-const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 8 * 6, 20 * 2, 10 * 6, 25 * 3, 8 * 6, 20 * 6, 15 * 6, 100 };
+const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 100, 80, 200, 100, 120, 100, 400};
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 1e1;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 5e1;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -85,7 +85,7 @@ const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};
 const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.6, 0.5, 0.4, 0.4};
 const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.6, 0.5, 0.4, 0.4};
 const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 4; 
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3; 
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
@@ -223,7 +223,7 @@ bool positionIsValid(Position p) {
 	return p.x >= 0 && p.x < MAP_SIZE && p.y >= 0 && p.y < MAP_SIZE;
 }
 
-int road_number[MAP_SIZE][MAP_SIZE];
+int road_number[MAP_SIZE][MAP_SIZE] = {0};
 vector <Position> road_grid[10];//The grid of every road TODO
 bool road_number_flag = false;
 int road_count = 0;
@@ -285,8 +285,8 @@ void canConstructUpdate() {
 		forbidConstruct(Pos(i->pos));
 }
 
-int pos_cover_grid[MAP_SIZE][MAP_SIZE][60][8];
-bool pos_cover_grid_vis[MAP_SIZE][MAP_SIZE][60][8];
+int pos_cover_grid[MAP_SIZE][MAP_SIZE][60][8] = {0};
+bool pos_cover_grid_vis[MAP_SIZE][MAP_SIZE][60][8] = {false};
 int posCoverGrid(Position p, int range, int roadnum) {
 	/*
 		For a certain position and distance, how many positions of roadnum can it cover?
@@ -328,7 +328,7 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 		if (posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i) > nearest_road.first)
 			nearest_road = make_pair(posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i), i);
 	return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * posCoverGrid(Pos(b.pos), range, roadnum) * typeFactor *
-		(roadnum != nearest_road.second ? ROAD_DEFENCE_FACTOR : 1);
+		((roadnum != nearest_road.second) ? ROAD_DEFENCE_FACTOR : 1);
 }
 void calcCriAttValue() {
 	/*
@@ -429,7 +429,7 @@ void _build_programmer() {
 }
 
 Position nearest_road[MAP_SIZE][MAP_SIZE][10];
-bool nearest_road_vis[MAP_SIZE][MAP_SIZE][10];
+bool nearest_road_vis[MAP_SIZE][MAP_SIZE][10] = {false};
 Position nearestRoad(Position p, int roadnum, int LIM = 20) {
 	if (nearest_road_vis[p.x][p.y][roadnum])
 		return nearest_road[p.x][p.y][roadnum];
@@ -460,7 +460,7 @@ void _defend() {
 		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
 			for (int r = 1; r <= road_count && operation_count > 0; ++r)
 				if (crisis_value[0][typ][r] > MAX_CRISIS) {
-					exit_flag = 1;
+					exit_flag++;
 					gr.clear();
 					for (int p = 9; p < 17; ++p)
 						if ((_BUILDING_TYPE[p] == 2 || _BUILDING_TYPE[p] == typ) && BUILDING_UNLOCK_AGE[p] <= state->age[ts19_flag])
@@ -471,7 +471,7 @@ void _defend() {
 					for (int i = 0; i < MAP_SIZE; ++i)
 						for (int j = 0; j < MAP_SIZE; ++j)
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
-								gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)) + 1))));//Defensive building prefers far from base
+								gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)) )));//Defensive building prefers far from base
 					int tmppos = gr._rand();
 					Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 					if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
@@ -482,8 +482,8 @@ void _defend() {
 						my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
 					}
 					else {
-						exit_flag = 0;
-						break;
+						exit_flag--;
+						continue;
 					}
 				}
 		if (!exit_flag) break;
@@ -529,6 +529,9 @@ void _attack() {
 			h.push(heapComp(crisis_value[1][i][j], i, j));
 	while (h.top().val < MIN_ATTACK[state->age[ts19_flag]] && operation_count > 0) {
 		heapComp t = h.top(); h.pop();
+
+		//t.rnum = rand() % road_count + 1;
+
 		gr.clear();
 		for (int i = 1; i < 9; ++i)
 			if (BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag]) 
