@@ -1,9 +1,9 @@
-//#include "stdafx.h"
+#include "stdafx.h"
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0408.01
+		0.0415.14
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -67,39 +67,40 @@ const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30,
 8,		//Mole
 20,		//Monte Carlo
 30,		//Larry Roborts
-30,		//Robort Kahn
+20,		//Robort Kahn
 10,		//Musk
 20,		//Hawkin
 1 };//The probability of build the building
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
+const double SOLDIER_CRISIS_FACTOR[8] = {4, 1, 1, 1, 1, 1, 1, 2e-1};
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
-const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 1e1 };//push tower / charge / tank
+const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
 
-const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 120, 80, 140, 100, 120, 100, 400};
+const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 120, 80, 40, 50, 120, 100, 400};
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 8e1;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 5e0;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
-const double MAX_CRISIS = 0;
+const double MAX_CRISIS[2] = { 0, -5e6};
 const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};
-const double PROGRAMMER_RATIO[6] = { 0.92, 0.82, 0.6, 0.5, 0.4, 0.4};
-const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.75, 0.6, 0.5, 0.4, 0.4};
+const double PROGRAMMER_RATIO[6] = { 0.82, 0.82, 0.6, 0.5, 0.4, 0.4};
+const double PROGRAMMER_MIN_PARTITION[6] = { 0.75, 0.75, 0.6, 0.5, 0.4, 0.4};
 const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3; 
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
 const double FRENZY_FACTOR = 0.3;
-const double ROAD_DEFENCE_FACTOR = 1e-1;	//When not on major road, the crisis factor should mult.
+const double ROAD_DEFENCE_FACTOR = 4e-1;	//When not on major road, the crisis factor should mult.
 
 //#############################################################################################
 //Aux. class definition
@@ -323,8 +324,8 @@ double soldierCrisisValue(Soldier s, int t) {
 	int dis_enemy = distance(s.pos, Position(199, 199)), dis_mybase = distance(s.pos, Position(0, 0));
 	if (dis_enemy >= 60 && dis_enemy <= 140 || dis_mybase >= 60 && dis_mybase <= 140); else return 0;
 	int type = s.soldier_name;
-	return log(s.heal + 1) * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] *
-		log(SOLDIER_ATTACKRANGE[type] + 1) * log(SOLDIER_SPEED[type]) * (t == _SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR;
+	return s.heal * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] *
+		SOLDIER_ATTACKRANGE[type] * SOLDIER_SPEED[type] * (t == _SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR * SOLDIER_CRISIS_FACTOR[type];
 }
 double buildingCrisisValue(Building b, int t, int roadnum) {
 	/*
@@ -337,7 +338,7 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 		if (posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i) > nearest_road.first)
 			nearest_road = make_pair(posCoverGrid(b.pos, BUILDING_ATTACK_RANGE[b.building_type], i), i);
 	//return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * posCoverGrid(Pos(b.pos), range, roadnum) * typeFactor *
-	return log(b.heal + 1) * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * range * typeFactor *
+	return b.heal * BUILDING_DEFENCE[type] * BUILDING_LEVEL_FACTOR[b.level] * range * typeFactor *
 		((roadnum != nearest_road.second) ? ROAD_DEFENCE_FACTOR : 1);
 }
 void calcCriAttValue() {
@@ -351,6 +352,7 @@ void calcCriAttValue() {
 		for (int j = 0; j < 2; ++j)
 			for (int k = 1; k <= road_count; ++k)
 				crisis_value[i][j][k] = 0.0;
+
 	for (auto i = state->soldier[!ts19_flag].begin(); i != state->soldier[!ts19_flag].end(); ++i)
 		for (int j = 0; j < 2; ++j) {
 			crisis_value[0][j][road_number[Pos((*i).pos).x][Pos((*i).pos).y]] += soldierCrisisValue(*i, j);
@@ -469,7 +471,7 @@ void _defend() {
 		int exit_flag = 0;
 		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
 			for (int r = 1; r <= road_count && operation_count > 0; ++r)
-				if (crisis_value[0][typ][r] > MAX_CRISIS) {
+				if (crisis_value[0][typ][r] > MAX_CRISIS[typ]) {
 					exit_flag++;
 					gr.clear();
 					for (int p = 9; p < 17; ++p)
@@ -569,7 +571,7 @@ void _attack() {
 
 void crisisValuePrint() {
 	for (int i = 1; i <= road_count; ++i)
-		debug("Crisis Value of Road #%d: %.0lf\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
+		debug("Crisis Value of Road #%d: %e\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
 	//for (int i = 1; i <= road_count; ++i)
 	//	debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
 	debug("\n");
@@ -625,7 +627,7 @@ void f_player() {
 	int vis[20] = { 0 };
 	for (auto i = state->soldier[ts19_flag].begin(); i != state->soldier[ts19_flag].end(); ++i) 
 		if (!vis[i->soldier_name] &&  soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1) > 1) {
-			debug("Sol %d, %.0lf\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
+			debug("Sol %2d, %e\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
 			vis[i->soldier_name] = 1;
 		}
 	memset(vis, 0, sizeof vis);
@@ -635,7 +637,7 @@ void f_player() {
 			for (int j = 1; j <= road_count; ++j)
 				ans += buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j);
 			if (ans > 1)
-				debug("Bud %d, %.0lf\n", i->building_type, ans);
+				debug("Bud %2d, %e\n", i->building_type, ans);
 			vis[i->building_type] = 1;
 		}
 
