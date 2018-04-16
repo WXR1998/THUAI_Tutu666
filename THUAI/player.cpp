@@ -1,4 +1,4 @@
-#include "stdafx.h"
+//#include "stdafx.h"
 /*
 	Author:
 		Tutu666
@@ -57,33 +57,51 @@ of defensive buildings.
 //#############################################################################################
 //const values definitions
 
-const char SOLDIER_NAME[10][20] = {"BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON"};
+const char SOLDIER_NAME[10][20] = { "BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON" };
 const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
 "Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[18] = { 0, 1, 0, 8, 8, 25, 30, 20, 30,
-5,		//Bool
-8,		//Ohm
-8,		//Mole
-20,		//Monte Carlo
-30,		//Larry Roborts
-20,		//Robort Kahn
-10,		//Musk
-20,		//Hawkin
-1 };//The probability of build the building
+const int BUILDING_BIAS[17] = { 0, 2, 1, 8, 8, 25, 30, 20, 30,
+	5,		//Bool
+	8,		//Ohm
+	8,		//Mole
+	20,		//Monte Carlo
+	30,		//Larry Roborts
+	20,		//Robort Kahn
+	10,		//Musk
+	20,		//Hawkin
+};//The probability of build the building
+
+const double SOLDIER_CRISIS_FACTOR[8] = {
+	8,		//BIT_STREAM
+	2,		//VOLTAGE_SOURCE
+	4,		//CURRENT_SOURCE
+	10,		//ENIAC
+	1.4,	//PACKAGE
+	2,		//OPTICAL_FIBER
+	30,		//TURING_MACHINE
+	2e-1	//ULTRON
+};
+const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	70,		//Bool
+	120,	//Ohm
+	50,		//Mole
+	40,		//Monte Carlo
+	50,		//Larry Roborts
+	80,		//Robort Kahn
+	50,		//Musk
+	200		//Hawkin
+};
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
-const double SOLDIER_CRISIS_FACTOR[8] = { 8, 2, 4, 10, 1.4, 2, 30, 2e-1 };
-										//56	00	27	27	67	27	27	18
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
 const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
 
-const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 70, 120, 50, 40, 50, 80, 50, 200 };
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
@@ -561,11 +579,11 @@ void _attack(int fixed_road = 0) {
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)))
 					if (nearestRoad(Position(i, j), t.rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
-						if (!fixed_road)
-							gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
-						else
-							if (i < 15 && j < 15)
-								gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
+						//if (!fixed_road)
+						gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
+																				   //else
+																				   //if (i < 15 && j < 15)
+																				   //gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(nearestRoad(bdpos, t.rnum, BUILDING_ATTACK_RANGE[bdtype])))) {
@@ -625,6 +643,14 @@ void _frenzy_mode() {
 	}
 	if (frenzy_flag == 2) {
 		debug("FRENZY\n");
+		if (CQC_flag) {
+			GenRandom gr;
+			gr.addItem(make_pair(0, 1));
+			gr.addItem(make_pair(1, 2));
+			if (gr._rand() == 0) {
+				_defend();
+			}
+		}
 		_attack(CQC_flag);
 		_UpdateAge();
 		_upgradeBuilding();
@@ -661,7 +687,7 @@ void f_player() {
 			vis[i->soldier_name] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++ i)
+	for (auto i = outp.begin(); i != outp.end(); ++i)
 		debug("Sol %2d, [%16s], %6.1lf\n", i->first, SOLDIER_NAME[i->first], i->second / 1e6);
 	outp.clear();
 	memset(vis, 0, sizeof vis);
@@ -672,11 +698,11 @@ void f_player() {
 				ans = max(buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j), ans);
 			if (ans > 1)
 				outp.push_back(make_pair(i->building_type, ans));
-				//debug("Bud %2d, %e\n", i->building_type, ans);
+			//debug("Bud %2d, %e\n", i->building_type, ans);
 			vis[i->building_type] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++ i)
+	for (auto i = outp.begin(); i != outp.end(); ++i)
 		debug("Bud %2d, [%16s], %6.1lf\n", i->first, BUILDING_NAME[i->first], i->second / 1e6);
 
 
