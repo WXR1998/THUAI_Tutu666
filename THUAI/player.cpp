@@ -1,16 +1,12 @@
 #include "stdafx.h"
 /*
-	Author:
-		Tutu666
-	Version:
-<<<<<<< HEAD
-		0.0415.14
-=======
-		0.0416.05
->>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
-	Instructions:
-		When upload code to the server, please comment the first line.
-		To enable debugging print, add '/D "LOCAL"' in complie settings.
+Author:
+Tutu666
+Version:
+0.0416.05
+Instructions:
+When upload code to the server, please comment the first line.
+To enable debugging print, add '/D "LOCAL"' in complie settings.
 */
 #include <vector>
 #include <string>
@@ -61,7 +57,7 @@ of defensive buildings.
 //#############################################################################################
 //const values definitions
 
-const char SOLDIER_NAME[10][20] = {"BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON"};
+const char SOLDIER_NAME[10][20] = { "BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON" };
 const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
 "Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
@@ -79,40 +75,20 @@ const int BUILDING_BIAS[18] = { 0, 1, 0, 8, 8, 25, 30, 20, 30,
 1 };//The probability of build the building
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
-<<<<<<< HEAD
-const double SOLDIER_CRISIS_FACTOR[8] = {4, 1, 1, 1, 1, 1, 1, 2e-1};
-=======
 const double SOLDIER_CRISIS_FACTOR[8] = { 8, 2, 4, 10, 1.4, 2, 30, 2e-1 };
-										//56	00	27	27	67	27	27	18
->>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
+//56	00	27	27	67	27	27	18
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
 const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
 
-<<<<<<< HEAD
-const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 120, 80, 40, 50, 120, 100, 400};
-=======
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 70, 120, 50, 40, 50, 80, 50, 200 };
->>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-<<<<<<< HEAD
-const double SOLDIER_ATTACK_FACTOR = 5e0;	//Adjust the power of soldier, to balance the power of buildings
-
-const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
-const int MAX_OPERATION_PER_TURN = 50;
-const double MAX_CRISIS[2] = { 0, -5e6};
-const double MIN_ATTACK[6] = { 1e5, 2e6, 4e7, 8e8, 16e9, 32e10};
-const double PROGRAMMER_RATIO[6] = { 0.82, 0.82, 0.6, 0.5, 0.4, 0.4};
-const double PROGRAMMER_MIN_PARTITION[6] = { 0.75, 0.75, 0.6, 0.5, 0.4, 0.4};
-const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3; 
-=======
 const double SOLDIER_ATTACK_FACTOR = 1e0;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
@@ -123,7 +99,6 @@ const double PROGRAMMER_RATIO[6] = { 0.82, 0.82, 0.6, 0.5, 0.4, 0.4 };
 const double PROGRAMMER_MIN_PARTITION[6] = { 0.75, 0.75, 0.6, 0.5, 0.4, 0.4 };
 const int UPDATE_AGE_BIAS[6] = { 50, 40, 40, 30, 30, 20 };
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
->>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
@@ -606,11 +581,7 @@ void _attack(int fixed_road = 0) {
 
 void crisisValuePrint() {
 	for (int i = 1; i <= road_count; ++i)
-<<<<<<< HEAD
-		debug("Crisis Value of Road #%d: %e\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
-=======
 		debug("Crisis Value of Road #%d: %6.1lf\n", i, (crisis_value[0][0][i] + crisis_value[0][1][i]) * 1e-6);
->>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 	//for (int i = 1; i <= road_count; ++i)
 	//	debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
 	debug("\n");
@@ -682,21 +653,15 @@ void f_player() {
 	crisisValuePrint();
 
 	int vis[20] = { 0 };
-<<<<<<< HEAD
-	for (auto i = state->soldier[ts19_flag].begin(); i != state->soldier[ts19_flag].end(); ++i) 
-		if (!vis[i->soldier_name] &&  soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1) > 1) {
-			debug("Sol %2d, %e\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
-=======
 	vector<pair<int, double> > outp;
 	for (auto i = state->soldier[ts19_flag].begin(); i != state->soldier[ts19_flag].end(); ++i)
 		if (!vis[i->soldier_name] && soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1) > 1) {
 			outp.push_back(make_pair(i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1)));
 			//debug("Sol %2d, %e\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
->>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 			vis[i->soldier_name] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++ i)
+	for (auto i = outp.begin(); i != outp.end(); ++i)
 		debug("Sol %2d, [%16s], %6.1lf\n", i->first, SOLDIER_NAME[i->first], i->second / 1e6);
 	outp.clear();
 	memset(vis, 0, sizeof vis);
@@ -706,16 +671,12 @@ void f_player() {
 			for (int j = 1; j <= road_count; ++j)
 				ans = max(buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j), ans);
 			if (ans > 1)
-<<<<<<< HEAD
-				debug("Bud %2d, %e\n", i->building_type, ans);
-=======
 				outp.push_back(make_pair(i->building_type, ans));
-				//debug("Bud %2d, %e\n", i->building_type, ans);
->>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
+			//debug("Bud %2d, %e\n", i->building_type, ans);
 			vis[i->building_type] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++ i)
+	for (auto i = outp.begin(); i != outp.end(); ++i)
 		debug("Bud %2d, [%16s], %6.1lf\n", i->first, BUILDING_NAME[i->first], i->second / 1e6);
 
 
