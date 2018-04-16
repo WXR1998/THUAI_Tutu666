@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0416.05
+		0.0416.20
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -78,11 +78,11 @@ const double SOLDIER_CRISIS_FACTOR[8] = {
 	8,		//BIT_STREAM
 	2,		//VOLTAGE_SOURCE
 	4,		//CURRENT_SOURCE
-	10,		//ENIAC
+	8,		//ENIAC
 	1.4,	//PACKAGE
-	2,		//OPTICAL_FIBER
+	1.5,	//OPTICAL_FIBER
 	30,		//TURING_MACHINE
-	2e-1	//ULTRON
+	1e-1	//ULTRON
 };
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	70,		//Bool
@@ -477,19 +477,12 @@ Position nearestRoad(Position p, int roadnum, int LIM = 20) {
 	return nearest_road[p.x][p.y][roadnum] = Position(-1, -1);
 }
 
-void _defend() {
+void _defend(int defend_base = 0) {
 	priority_queue < heapComp > h;
 	while (!h.empty()) h.pop();
 	GenRandom gr;
 	Timer timer;
-	/*
-	for (int i = 0; i < 2; ++i)
-	for (int j = 1; j <= road_count; ++j) {
-	h.push(heapComp(crisis_value[0][i][j], i, j));
-	//debug("%lf %d %d\n", crisis_value[0][i][j], i, j);
-	}
-	*/
-	for (; operation_count > 0; ) {
+	while (operation_count > 0) {
 		int exit_flag = 0;
 		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
 			for (int r = 1; r <= road_count && operation_count > 0; ++r)
@@ -505,8 +498,16 @@ void _defend() {
 					for (int i = 0; i < MAP_SIZE; ++i)
 						for (int j = 0; j < MAP_SIZE; ++j)
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
-								gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+								if (!defend_base)
+									gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+								else
+									if (i < 16 && j < 16)
+										gr.addItem(make_pair(i * MAP_SIZE + j, 40000 / (i + j)));//Defend Base
 					int tmppos = gr._rand();
+					if (tmppos == -1) {
+						exit_flag--;
+						continue;
+					}
 					Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 					if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
 						forbidConstruct(bdpos);
@@ -522,38 +523,6 @@ void _defend() {
 				}
 		if (!exit_flag) break;
 	}
-	/*
-	while (h.top().val > MAX_CRISIS && operation_count > 0) {
-	heapComp t = h.top(); h.pop();
-	gr.clear();
-	for (int i = 9; i < 17; ++i)
-	if ((_BUILDING_TYPE[i] == 2 || _BUILDING_TYPE[i] == t.typ) && BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag])
-	gr.addItem(make_pair(i, BUILDING_BIAS[i]));
-	int bdtype = gr._rand();
-	gr.clear();
-	//timer.time("Heap Processing");
-	//To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
-	for (int i = 0; i < MAP_SIZE; ++i)
-	for (int j = 0; j < MAP_SIZE; ++j)
-	if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), t.rnum, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
-	gr.addItem(make_pair(i * MAP_SIZE + j, int((i+j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum))+1))));//Defensive building prefers far from base
-	//timer.time("Heap Processing2");
-	int tmppos = gr._rand();
-	Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
-	if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
-	forbidConstruct(bdpos);
-	Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype], Pos(bdpos), ts19_flag, 0, 0);
-	t.val -= buildingCrisisValue(tmpbd, t.typ, t.rnum);
-	my_resource -= BUILDING_RESOURCE[bdtype];
-	my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
-	}
-	else {
-	break;
-	}
-	h.push(t);
-	}
-	*/
-	//timer.time("DefendFinish");
 }
 void _attack(int fixed_road = 0) {
 	priority_queue < heapComp > h;
@@ -561,7 +530,7 @@ void _attack(int fixed_road = 0) {
 	for (int i = 0; i < 2; ++i)
 		for (int j = 1; j <= road_count; ++j)
 			h.push(heapComp(crisis_value[1][i][j], i, j));
-	while (h.top().val < MIN_ATTACK[state->age[ts19_flag]] && operation_count > 0) {
+	while (operation_count > 0) {
 		heapComp t = h.top(); h.pop();
 
 		if (fixed_road)
@@ -574,19 +543,30 @@ void _attack(int fixed_road = 0) {
 				gr.addItem(make_pair(i, BUILDING_BIAS[i]));
 		int bdtype = gr._rand();
 		if (bdtype == -1) continue;
+		if (fixed_road && SOLDIER_MOVETYPE[bdtype - 1] != 0)
+			bdtype = Shannon;
 		gr.clear();
 		for (int i = 0; i < MAP_SIZE; ++i)
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)))
 					if (nearestRoad(Position(i, j), t.rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
-						//if (!fixed_road)
-						gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
-																				   //else
-																				   //if (i < 15 && j < 15)
-																				   //gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
+						if (!fixed_road || (fixed_road && i < 20 && j < 20))
+							gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
-		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(nearestRoad(bdpos, t.rnum, BUILDING_ATTACK_RANGE[bdtype])))) {
+		Position prpos = Position(-1, -1);
+		if (fixed_road) {
+			for (int i = 0; i < 20; ++ i)
+				for (int j = 0; j < 20; ++ j)
+					if (road_number[i][j] == fixed_road && distance(bdpos, Position(i, j)) < BUILDING_ATTACK_RANGE[bdtype]) {
+						if (prpos.x == -1 || i + j < prpos.x + prpos.y)
+							prpos = Position(i, j);
+					}
+		}
+		else {
+			prpos = nearestRoad(bdpos, t.rnum, BUILDING_ATTACK_RANGE[bdtype]);
+		}
+		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(prpos))) {
 			forbidConstruct(bdpos);
 			my_resource -= BUILDING_RESOURCE[bdtype];
 			my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
@@ -600,8 +580,6 @@ void _attack(int fixed_road = 0) {
 void crisisValuePrint() {
 	for (int i = 1; i <= road_count; ++i)
 		debug("Crisis Value of Road #%d: %6.1lf\n", i, (crisis_value[0][0][i] + crisis_value[0][1][i]) * 1e-6);
-	//for (int i = 1; i <= road_count; ++i)
-	//	debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
 	debug("\n");
 }
 
@@ -610,10 +588,16 @@ void _frenzy_mode() {
 	pair<int, int> min_dis = make_pair(400, 0);
 	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
 		min_dis = min(min_dis, make_pair(distance(Pos(i->pos), Position(0, 0)), Pos(i->pos).x * MAP_SIZE + Pos(i->pos).y));
-	if (min_dis < make_pair(200, 0)) {
+	/*
+	if (min_dis < make_pair(250, 0) && state->turn < 100) {
+		for (int i = 1; i <= road_count; ++i)
+			crisis_value[0][0][i] = 1e7;
+	}
+	*/
+	if (min_dis < make_pair(150, 0)) {
 		pair<int, int> min_road = make_pair(1000, 0);
 		for (int i = 1; i <= road_count; ++i) {
-			Position t = nearestRoad(min_dis.second, i, 30);
+			Position t = nearestRoad(Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE), i, 30);
 			if (distance(t, Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE)) < min_road.first)
 				min_road = make_pair(distance(t, Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE)), i);
 		}
@@ -622,7 +606,7 @@ void _frenzy_mode() {
 	//if (ts19_flag && state->turn >= 20)
 	//	CQC_flag = 1;
 
-	if (my_resource >= FRENZY_LIMIT && frenzy_flag == 0 && state->building[ts19_flag].size() - 1 >= buildingLimit() || CQC_flag && !frenzy_flag)
+	if ((my_resource >= FRENZY_LIMIT && frenzy_flag == 0 && state->building[ts19_flag].size() - 1 >= buildingLimit()) || (CQC_flag && !frenzy_flag))
 		frenzy_flag = 1;
 	if (my_resource < FRENZY_LIMIT / 5 && !CQC_flag)
 		frenzy_flag = 0;
@@ -631,7 +615,7 @@ void _frenzy_mode() {
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer)
 				++tot_programmer;
-		int remain_programmer = max(int(tot_programmer * FRENZY_FACTOR), 20);
+		int remain_programmer = CQC_flag ? 30 : int(tot_programmer * FRENZY_FACTOR);
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer && tot_programmer > remain_programmer) {
 				sell(i->unit_id);
@@ -645,10 +629,21 @@ void _frenzy_mode() {
 		debug("FRENZY\n");
 		if (CQC_flag) {
 			GenRandom gr;
-			gr.addItem(make_pair(0, 1));
-			gr.addItem(make_pair(1, 2));
-			if (gr._rand() == 0) {
-				_defend();
+			gr.addItem(make_pair(0, 10));
+			gr.addItem(make_pair(1, 6));
+			gr.addItem(make_pair(2, 3));
+			gr.addItem(make_pair(3, 1));
+			switch (gr._rand()) {
+				case 1:
+					_defend(1);
+					break;
+				case 2:
+					_maintain();
+					_upgradeBuilding();
+					break;
+				case 3:
+					_build_programmer();
+					break;
 			}
 		}
 		_attack(CQC_flag);
