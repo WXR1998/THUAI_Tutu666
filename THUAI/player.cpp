@@ -1,12 +1,12 @@
 #include "stdafx.h"
 /*
-Author:
-Tutu666
-Version:
-0.0416.05
-Instructions:
-When upload code to the server, please comment the first line.
-To enable debugging print, add '/D "LOCAL"' in complie settings.
+	Author:
+		Tutu666
+	Version:
+		0.0416.05
+	Instructions:
+		When upload code to the server, please comment the first line.
+		To enable debugging print, add '/D "LOCAL"' in complie settings.
 */
 #include <vector>
 #include <string>
@@ -76,7 +76,6 @@ const int BUILDING_BIAS[18] = { 0, 1, 0, 8, 8, 25, 30, 20, 30,
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
 const double SOLDIER_CRISIS_FACTOR[8] = { 8, 2, 4, 10, 1.4, 2, 30, 2e-1 };
-//56	00	27	27	67	27	27	18
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
