@@ -57,7 +57,7 @@ of defensive buildings.
 //#############################################################################################
 //const values definitions
 
-const char SOLDIER_NAME[10][20] = { "BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON" };
+const char SOLDIER_NAME[10][20] = {"BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON"};
 const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
 "Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
@@ -76,6 +76,7 @@ const int BUILDING_BIAS[18] = { 0, 1, 0, 8, 8, 25, 30, 20, 30,
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
 const double SOLDIER_CRISIS_FACTOR[8] = { 8, 2, 4, 10, 1.4, 2, 30, 2e-1 };
+										//56	00	27	27	67	27	27	18
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
@@ -660,7 +661,7 @@ void f_player() {
 			vis[i->soldier_name] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++i)
+	for (auto i = outp.begin(); i != outp.end(); ++ i)
 		debug("Sol %2d, [%16s], %6.1lf\n", i->first, SOLDIER_NAME[i->first], i->second / 1e6);
 	outp.clear();
 	memset(vis, 0, sizeof vis);
@@ -671,11 +672,11 @@ void f_player() {
 				ans = max(buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j), ans);
 			if (ans > 1)
 				outp.push_back(make_pair(i->building_type, ans));
-			//debug("Bud %2d, %e\n", i->building_type, ans);
+				//debug("Bud %2d, %e\n", i->building_type, ans);
 			vis[i->building_type] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++i)
+	for (auto i = outp.begin(); i != outp.end(); ++ i)
 		debug("Bud %2d, [%16s], %6.1lf\n", i->first, BUILDING_NAME[i->first], i->second / 1e6);
 
 
