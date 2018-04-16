@@ -3,7 +3,11 @@
 	Author:
 		Tutu666
 	Version:
+<<<<<<< HEAD
 		0.0415.14
+=======
+		0.0416.05
+>>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -16,6 +20,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstring>
+#include <algorithm>
 #include "communication.h"
 
 #ifdef LOCAL
@@ -33,17 +38,17 @@ extern State* state;
 extern int** ts19_map;
 extern bool ts19_flag;
 /*
-Aim to unify the expression of position while holding either flag, we define an operation called 
-position transformation. When holding flag 1, we should inverse all the position informations 
+Aim to unify the expression of position while holding either flag, we define an operation called
+position transformation. When holding flag 1, we should inverse all the position informations
 from 'state'.
 Position transformation should be used ONLY ONCE when getting data from state.
 We don't need to transform ts19_map informations because it is central-symmetrical.
 
-We number the roads by certain order, to organize defence and attack. On every road there are 
-values: Realbody Crisis Value(RCV), Data Crisis Value(DCV), Realbody Attack Value(RAV), Data 
+We number the roads by certain order, to organize defence and attack. On every road there are
+values: Realbody Crisis Value(RCV), Data Crisis Value(DCV), Realbody Attack Value(RAV), Data
 Attack Value(DAV).
 
-Take the road which has the highest CV to defend function, while take the road which has the 
+Take the road which has the highest CV to defend function, while take the road which has the
 highest AV to attack function.
 
 The quantity of programmers is controlled by a series of factors and current building limit.
@@ -56,12 +61,13 @@ of defensive buildings.
 //#############################################################################################
 //const values definitions
 
+const char SOLDIER_NAME[10][20] = {"BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON"};
 const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
 "Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30, 
+const int BUILDING_BIAS[18] = { 0, 1, 0, 8, 8, 25, 30, 20, 30,
 5,		//Bool
 8,		//Ohm
 8,		//Mole
@@ -73,19 +79,29 @@ const int BUILDING_BIAS[18] = {0, 1, 0, 8, 8, 25, 30, 20, 30,
 1 };//The probability of build the building
 
 const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
+<<<<<<< HEAD
 const double SOLDIER_CRISIS_FACTOR[8] = {4, 1, 1, 1, 1, 1, 1, 2e-1};
+=======
+const double SOLDIER_CRISIS_FACTOR[8] = { 8, 2, 4, 10, 1.4, 2, 30, 2e-1 };
+										//56	00	27	27	67	27	27	18
+>>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
 const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
 const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
 
+<<<<<<< HEAD
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 120, 80, 40, 50, 120, 100, 400};
+=======
+const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 70, 120, 50, 40, 50, 80, 50, 200 };
+>>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
+<<<<<<< HEAD
 const double SOLDIER_ATTACK_FACTOR = 5e0;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
@@ -96,14 +112,26 @@ const double PROGRAMMER_RATIO[6] = { 0.82, 0.82, 0.6, 0.5, 0.4, 0.4};
 const double PROGRAMMER_MIN_PARTITION[6] = { 0.75, 0.75, 0.6, 0.5, 0.4, 0.4};
 const int UPDATE_AGE_BIAS[6] = {50, 40, 40, 30, 30, 20};
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3; 
+=======
+const double SOLDIER_ATTACK_FACTOR = 1e0;	//Adjust the power of soldier, to balance the power of buildings
+
+const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
+const int MAX_OPERATION_PER_TURN = 50;
+const double MAX_CRISIS[2] = { 0, -5e6 };
+const double MIN_ATTACK[6] = { 1e10, 2e10, 4e10, 8e10, 16e10, 32e10 };
+const double PROGRAMMER_RATIO[6] = { 0.82, 0.82, 0.6, 0.5, 0.4, 0.4 };
+const double PROGRAMMER_MIN_PARTITION[6] = { 0.75, 0.75, 0.6, 0.5, 0.4, 0.4 };
+const int UPDATE_AGE_BIAS[6] = { 50, 40, 40, 30, 30, 20 };
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
+>>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
 const double FRENZY_FACTOR = 0.3;
 const double ROAD_DEFENCE_FACTOR = 4e-1;	//When not on major road, the crisis factor should mult.
 
-//#############################################################################################
-//Aux. class definition
+											//#############################################################################################
+											//Aux. class definition
 class GenRandom {
 	/*
 	To generate random number by certain probablity
@@ -127,7 +155,7 @@ public:
 	}
 	int _rand() {
 		if (sum == 0) return -1;
-		long long tmp = ((rand()%10000)*(rand()%10000)) % sum + 1;
+		long long tmp = ((rand() % 10000)*(rand() % 10000)) % sum + 1;
 		for (auto i = t.begin(); i != t.end(); ++i) {
 			tmp -= (*i).second;
 			if (tmp <= 0)
@@ -194,19 +222,19 @@ int distance(Position a, Position b) {
 Position inversePosition(Position p) {
 	return Position(MAP_SIZE - 1 - p.x, MAP_SIZE - 1 - p.y);
 }
-Position Pos(Position p) {
+Position Pos(Position p, int typ = 0) {
 	/*
-		Returns the position after inversion
+	Returns the position after inversion
 	*/
-	return ts19_flag ? inversePosition(p) : p;
+	return (typ ? !ts19_flag : ts19_flag) ? inversePosition(p) : p;
 }
 bool _construct(BuildingType a, Position b, Position c = Position(0, 0)) {
 	if (operation_count <= 0) return false;
 	if (BUILDING_BUILDINGCOST[a] > my_building_credits || BUILDING_RESOURCE[a] > my_resource)
 		return false;
-	if (int(state->building[ts19_flag].size() - 1 + my_build_request) >= buildingLimit()) 
+	if (int(state->building[ts19_flag].size() - 1 + my_build_request) >= buildingLimit())
 		return false;
-	debug("Build %s %2d [%s] at (%3d,%3d) while pro=(%3d,%3d)\n", (a<9)?"ATT":((a==17)?"PGM":"DEF"), a, BUILDING_NAME[a], b.x, b.y, c.x, c.y);
+	debug("Build %s %2d [%s] at (%3d,%3d) while pro=(%3d,%3d)\n", (a<9) ? "ATT" : ((a == 17) ? "PGM" : "DEF"), a, BUILDING_NAME[a], b.x, b.y, c.x, c.y);
 	--operation_count;
 	++my_build_request;
 	construct(a, b, c);
@@ -233,7 +261,7 @@ bool positionIsValid(Position p) {
 	return p.x >= 0 && p.x < MAP_SIZE && p.y >= 0 && p.y < MAP_SIZE;
 }
 
-int road_number[MAP_SIZE][MAP_SIZE] = {0};
+int road_number[MAP_SIZE][MAP_SIZE] = { 0 };
 vector <Position> road_grid[10];//The grid of every road TODO
 bool road_number_flag = false;
 int road_count = 0;
@@ -246,8 +274,8 @@ void getRoadNumberDfs(Position p, int number) {
 }
 void getRoadNumber() {
 	/*
-		Run only one time.
-		Used of number the roads.
+	Run only one time.
+	Used of number the roads.
 	*/
 	if (road_number_flag) return;
 	road_number_flag = true;
@@ -295,12 +323,12 @@ void canConstructUpdate() {
 		forbidConstruct(Pos(i->pos));
 }
 
-int pos_cover_grid[MAP_SIZE][MAP_SIZE][60][8] = {0};
-bool pos_cover_grid_vis[MAP_SIZE][MAP_SIZE][60][8] = {false};
+int pos_cover_grid[MAP_SIZE][MAP_SIZE][60][8] = { 0 };
+bool pos_cover_grid_vis[MAP_SIZE][MAP_SIZE][60][8] = { false };
 int posCoverGrid(Position p, int range, int roadnum) {
 	/*
-		For a certain position and distance, how many positions of roadnum can it cover?
-		Due to heavy calculation, we use memorization to accelerate.
+	For a certain position and distance, how many positions of roadnum can it cover?
+	Due to heavy calculation, we use memorization to accelerate.
 	*/
 	if (pos_cover_grid_vis[p.x][p.y][range][roadnum])
 		return pos_cover_grid[p.x][p.y][range][roadnum];
@@ -319,17 +347,17 @@ int posCoverGrid(Position p, int range, int roadnum) {
 double crisis_value[2][2][10];//[0] indicates crisis value. [1] indicates attack value.
 double soldierCrisisValue(Soldier s, int t) {
 	/*
-		Returns the power of a soldier. t=0/1 indicates data or realbody.
+	Returns the power of a soldier. t=0/1 indicates data or realbody.
 	*/
 	int dis_enemy = distance(s.pos, Position(199, 199)), dis_mybase = distance(s.pos, Position(0, 0));
-	if (dis_enemy >= 60 && dis_enemy <= 140 || dis_mybase >= 60 && dis_mybase <= 140); else return 0;
+	//if (dis_enemy >= 60 && dis_enemy <= 140 || dis_mybase >= 60 && dis_mybase <= 140); else return 0;
 	int type = s.soldier_name;
 	return s.heal * SOLDIER_MOVETYPE_CRISIS_FACTOR[SOLDIER_MOVETYPE[type]] * SOLDIER_ATTACK[type] *
 		SOLDIER_ATTACKRANGE[type] * SOLDIER_SPEED[type] * (t == _SOLDIER_TYPE[type]) * SOLDIER_ATTACK_FACTOR * SOLDIER_CRISIS_FACTOR[type];
 }
 double buildingCrisisValue(Building b, int t, int roadnum) {
 	/*
-		Returns the power of a building for one road. t=0/1 indicates data or realbody.
+	Returns the power of a building for one road. t=0/1 indicates data or realbody.
 	*/
 	int type = b.building_type, grid = 0, range = BUILDING_ATTACK_RANGE[b.building_type], typeFactor;
 	typeFactor = (_BUILDING_TYPE[type] == 2) ? 1 : (t == _BUILDING_TYPE[type]);
@@ -343,10 +371,10 @@ double buildingCrisisValue(Building b, int t, int roadnum) {
 }
 void calcCriAttValue() {
 	/*
-		CV: Enemy soldier CV - My building CV
-		AV: My soldier CV - Enemy building CV
-		Every enemy defensive building have a major defend road. Not on this road it's CV 
-		should be decrease.
+	CV: Enemy soldier CV - My building CV
+	AV: My soldier CV - Enemy building CV
+	Every enemy defensive building have a major defend road. Not on this road it's CV
+	should be decrease.
 	*/
 	for (int i = 0; i < 2; ++i)
 		for (int j = 0; j < 2; ++j)
@@ -376,7 +404,7 @@ void calcCriAttValue() {
 
 void _upgradeBuilding() {
 	priority_queue < pair<int, vector<Building>::iterator> > h;
-	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i) 
+	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		if (i->level != state->age[ts19_flag])
 			h.push(make_pair(-i->level, i));
 	while (h.size() && operation_count > 0) {
@@ -390,7 +418,7 @@ void _upgradeBuilding() {
 			my_building_credits -= int(BUILDING_BUILDINGCOST[t.second->building_type] * AGE_INCREASE);
 			debug("Upgrade Building [%12s] from %d\n", BUILDING_NAME[t.second->building_type], t.second->level);
 		}
-		else 
+		else
 			break;
 	}
 }
@@ -422,7 +450,8 @@ bool _build_a_programmer() {
 					my_resource -= BUILDING_RESOURCE[Programmer];
 					my_building_credits -= BUILDING_BUILDINGCOST[Programmer];
 					return true;
-				}else
+				}
+				else
 					return false;
 	return false;
 }
@@ -441,7 +470,7 @@ void _build_programmer() {
 }
 
 Position nearest_road[MAP_SIZE][MAP_SIZE][10];
-bool nearest_road_vis[MAP_SIZE][MAP_SIZE][10] = {false};
+bool nearest_road_vis[MAP_SIZE][MAP_SIZE][10] = { false };
 Position nearestRoad(Position p, int roadnum, int LIM = 20) {
 	if (nearest_road_vis[p.x][p.y][roadnum])
 		return nearest_road[p.x][p.y][roadnum];
@@ -450,8 +479,8 @@ Position nearestRoad(Position p, int roadnum, int LIM = 20) {
 		for (int i = -range; i <= range; ++i)
 			for (int j = -range + abs(i); j <= -abs(i) + range; ++j)
 				if (positionIsValid(Position(p.x + i, p.y + j)))
-					if (road_number[p.x+i][p.y+j] == roadnum)
-						return nearest_road[p.x][p.y][roadnum] = Position(p.x+i, p.y+j);
+					if (road_number[p.x + i][p.y + j] == roadnum)
+						return nearest_road[p.x][p.y][roadnum] = Position(p.x + i, p.y + j);
 	return nearest_road[p.x][p.y][roadnum] = Position(-1, -1);
 }
 
@@ -462,11 +491,11 @@ void _defend() {
 	Timer timer;
 	/*
 	for (int i = 0; i < 2; ++i)
-		for (int j = 1; j <= road_count; ++j) {
-			h.push(heapComp(crisis_value[0][i][j], i, j));
-			//debug("%lf %d %d\n", crisis_value[0][i][j], i, j);
-		}
-		*/
+	for (int j = 1; j <= road_count; ++j) {
+	h.push(heapComp(crisis_value[0][i][j], i, j));
+	//debug("%lf %d %d\n", crisis_value[0][i][j], i, j);
+	}
+	*/
 	for (; operation_count > 0; ) {
 		int exit_flag = 0;
 		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
@@ -483,7 +512,7 @@ void _defend() {
 					for (int i = 0; i < MAP_SIZE; ++i)
 						for (int j = 0; j < MAP_SIZE; ++j)
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
-								gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)) )));//Defensive building prefers far from base
+								gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
 					int tmppos = gr._rand();
 					Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 					if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
@@ -502,38 +531,38 @@ void _defend() {
 	}
 	/*
 	while (h.top().val > MAX_CRISIS && operation_count > 0) {
-		heapComp t = h.top(); h.pop();
-		gr.clear();
-		for (int i = 9; i < 17; ++i)
-			if ((_BUILDING_TYPE[i] == 2 || _BUILDING_TYPE[i] == t.typ) && BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag])
-				gr.addItem(make_pair(i, BUILDING_BIAS[i]));
-		int bdtype = gr._rand();
-		gr.clear();
-		//timer.time("Heap Processing");
-			//To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
-		for (int i = 0; i < MAP_SIZE; ++i)
-			for (int j = 0; j < MAP_SIZE; ++j)
-				if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), t.rnum, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
-					gr.addItem(make_pair(i * MAP_SIZE + j, int((i+j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum))+1))));//Defensive building prefers far from base
-		//timer.time("Heap Processing2");
-		int tmppos = gr._rand();
-		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
-		if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
-			forbidConstruct(bdpos);
-			Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype], Pos(bdpos), ts19_flag, 0, 0);
-			t.val -= buildingCrisisValue(tmpbd, t.typ, t.rnum);
-			my_resource -= BUILDING_RESOURCE[bdtype];
-			my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
-		}
-		else {
-			break;
-		}
-		h.push(t);
+	heapComp t = h.top(); h.pop();
+	gr.clear();
+	for (int i = 9; i < 17; ++i)
+	if ((_BUILDING_TYPE[i] == 2 || _BUILDING_TYPE[i] == t.typ) && BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag])
+	gr.addItem(make_pair(i, BUILDING_BIAS[i]));
+	int bdtype = gr._rand();
+	gr.clear();
+	//timer.time("Heap Processing");
+	//To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
+	for (int i = 0; i < MAP_SIZE; ++i)
+	for (int j = 0; j < MAP_SIZE; ++j)
+	if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), t.rnum, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
+	gr.addItem(make_pair(i * MAP_SIZE + j, int((i+j)*(log(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], t.rnum))+1))));//Defensive building prefers far from base
+	//timer.time("Heap Processing2");
+	int tmppos = gr._rand();
+	Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
+	if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
+	forbidConstruct(bdpos);
+	Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype], Pos(bdpos), ts19_flag, 0, 0);
+	t.val -= buildingCrisisValue(tmpbd, t.typ, t.rnum);
+	my_resource -= BUILDING_RESOURCE[bdtype];
+	my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
 	}
-*/
+	else {
+	break;
+	}
+	h.push(t);
+	}
+	*/
 	//timer.time("DefendFinish");
 }
-void _attack() {
+void _attack(int fixed_road = 0) {
 	priority_queue < heapComp > h;
 	GenRandom gr;
 	for (int i = 0; i < 2; ++i)
@@ -542,11 +571,13 @@ void _attack() {
 	while (h.top().val < MIN_ATTACK[state->age[ts19_flag]] && operation_count > 0) {
 		heapComp t = h.top(); h.pop();
 
+		if (fixed_road)
+			t.rnum = fixed_road;
 		//t.rnum = rand() % road_count + 1;
 
 		gr.clear();
 		for (int i = 1; i < 9; ++i)
-			if (BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag]) 
+			if (BUILDING_UNLOCK_AGE[i] <= state->age[ts19_flag])
 				gr.addItem(make_pair(i, BUILDING_BIAS[i]));
 		int bdtype = gr._rand();
 		if (bdtype == -1) continue;
@@ -555,7 +586,11 @@ void _attack() {
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)))
 					if (nearestRoad(Position(i, j), t.rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
-						gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
+						if (!fixed_road)
+							gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
+						else
+							if (i < 15 && j < 15)
+								gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(nearestRoad(bdpos, t.rnum, BUILDING_ATTACK_RANGE[bdtype])))) {
@@ -571,23 +606,43 @@ void _attack() {
 
 void crisisValuePrint() {
 	for (int i = 1; i <= road_count; ++i)
+<<<<<<< HEAD
 		debug("Crisis Value of Road #%d: %e\n", i, crisis_value[0][0][i] + crisis_value[0][1][i]);
+=======
+		debug("Crisis Value of Road #%d: %6.1lf\n", i, (crisis_value[0][0][i] + crisis_value[0][1][i]) * 1e-6);
+>>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 	//for (int i = 1; i <= road_count; ++i)
 	//	debug("ATT Road #%d: %.0lf\n", i, crisis_value[1][0][i] + crisis_value[1][1][i]);
 	debug("\n");
 }
 
 void _frenzy_mode() {
-	if (my_resource >= FRENZY_LIMIT && frenzy_flag == 0 && state->building[ts19_flag].size() - 1 >= buildingLimit())
+	int CQC_flag = 0;
+	pair<int, int> min_dis = make_pair(400, 0);
+	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
+		min_dis = min(min_dis, make_pair(distance(Pos(i->pos), Position(0, 0)), Pos(i->pos).x * MAP_SIZE + Pos(i->pos).y));
+	if (min_dis < make_pair(200, 0)) {
+		pair<int, int> min_road = make_pair(1000, 0);
+		for (int i = 1; i <= road_count; ++i) {
+			Position t = nearestRoad(min_dis.second, i, 30);
+			if (distance(t, Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE)) < min_road.first)
+				min_road = make_pair(distance(t, Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE)), i);
+		}
+		CQC_flag = min_road.second;
+	}
+	//if (ts19_flag && state->turn >= 20)
+	//	CQC_flag = 1;
+
+	if (my_resource >= FRENZY_LIMIT && frenzy_flag == 0 && state->building[ts19_flag].size() - 1 >= buildingLimit() || CQC_flag && !frenzy_flag)
 		frenzy_flag = 1;
-	if (my_resource < FRENZY_LIMIT / 5)
+	if (my_resource < FRENZY_LIMIT / 5 && !CQC_flag)
 		frenzy_flag = 0;
 	if (frenzy_flag == 1) {
 		int tot_programmer = 0;
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer)
 				++tot_programmer;
-		int remain_programmer = int(tot_programmer * FRENZY_FACTOR);
+		int remain_programmer = max(int(tot_programmer * FRENZY_FACTOR), 20);
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer && tot_programmer > remain_programmer) {
 				sell(i->unit_id);
@@ -598,7 +653,9 @@ void _frenzy_mode() {
 		frenzy_flag = 2;
 	}
 	if (frenzy_flag == 2) {
-		_attack();
+		debug("FRENZY\n");
+		_attack(CQC_flag);
+		_UpdateAge();
 		_upgradeBuilding();
 		_maintain();
 	}
@@ -612,7 +669,7 @@ void f_player() {
 	my_resource = state->resource[ts19_flag].resource;
 	my_building_credits = state->resource[ts19_flag].building_point;
 	my_build_request = 0;
-	debug("\nTurn=%4d\tAge=%2d\tBuildings=%4zd\tResources=%6d\n", state->turn ,state->age[ts19_flag], state->building[ts19_flag].size() - 1, state->resource[ts19_flag].resource);
+	debug("\nTurn=%4d\tAge=%2d\tBuildings=%4zd\tResources=%6d\n", state->turn, state->age[ts19_flag], state->building[ts19_flag].size() - 1, state->resource[ts19_flag].resource);
 	if (!srand_flag) {
 		srand_flag = 1;
 		srand(unsigned((ts19_flag + 1) * time(NULL)));
@@ -625,21 +682,41 @@ void f_player() {
 	crisisValuePrint();
 
 	int vis[20] = { 0 };
+<<<<<<< HEAD
 	for (auto i = state->soldier[ts19_flag].begin(); i != state->soldier[ts19_flag].end(); ++i) 
 		if (!vis[i->soldier_name] &&  soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1) > 1) {
 			debug("Sol %2d, %e\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
+=======
+	vector<pair<int, double> > outp;
+	for (auto i = state->soldier[ts19_flag].begin(); i != state->soldier[ts19_flag].end(); ++i)
+		if (!vis[i->soldier_name] && soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1) > 1) {
+			outp.push_back(make_pair(i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1)));
+			//debug("Sol %2d, %e\n", i->soldier_name, soldierCrisisValue(*i, 0) + soldierCrisisValue(*i, 1));
+>>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 			vis[i->soldier_name] = 1;
 		}
+	sort(outp.begin(), outp.end());
+	for (auto i = outp.begin(); i != outp.end(); ++ i)
+		debug("Sol %2d, [%16s], %6.1lf\n", i->first, SOLDIER_NAME[i->first], i->second / 1e6);
+	outp.clear();
 	memset(vis, 0, sizeof vis);
-	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i) 
+	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		if (!vis[i->building_type]) {
 			double ans = 0;
 			for (int j = 1; j <= road_count; ++j)
-				ans += buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j);
+				ans = max(buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j), ans);
 			if (ans > 1)
+<<<<<<< HEAD
 				debug("Bud %2d, %e\n", i->building_type, ans);
+=======
+				outp.push_back(make_pair(i->building_type, ans));
+				//debug("Bud %2d, %e\n", i->building_type, ans);
+>>>>>>> f6051b90232341f8c47ccf51d7a1b98168cc14e6
 			vis[i->building_type] = 1;
 		}
+	sort(outp.begin(), outp.end());
+	for (auto i = outp.begin(); i != outp.end(); ++ i)
+		debug("Bud %2d, [%16s], %6.1lf\n", i->first, BUILDING_NAME[i->first], i->second / 1e6);
 
 
 	//if (fatal_error) exit(1);
