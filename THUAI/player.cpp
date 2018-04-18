@@ -497,11 +497,19 @@ void _defend(int defend_base = 0) {
 		soldier_count[road_number[Pos(i->pos).x][Pos(i->pos).y]][i->soldier_name] ++;
 		soldier_sum[road_number[Pos(i->pos).x][Pos(i->pos).y]] ++;
 	}
+	if (defend_base) {
+		int sum = 0;
+		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
+			if (i->building_type == Bool)
+				sum++;
+		if (sum > 12)
+			return;
+	}
 	while (operation_count > 0) {
 		int exit_flag = 0;
 		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
 			for (int r = 1; r <= road_count && operation_count > 0; ++r)
-				if (crisis_value[0][typ][r] > MAX_CRISIS[typ]) {
+				if (crisis_value[0][typ][r] > MAX_CRISIS[typ] || defend_base && typ == 1) {
 					exit_flag++;
 					gr.clear();
 					for (int p = 9; p < 17; ++p)
@@ -511,7 +519,7 @@ void _defend(int defend_base = 0) {
 					gr.clear();
 					gr.addItem(make_pair(0, 50));//0 Means not change the building type
 					for (int i = 1; i < 8; ++i)//Bool is too weak
-						if (BUILDING_UNLOCK_AGE[SOLDIER_BUSTER_BUILDING[i]] <= state->age[ts19_flag])
+						if (BUILDING_UNLOCK_AGE[SOLDIER_BUSTER_BUILDING[i]] <= state->age[ts19_flag] && soldier_sum[r] != 0)
 							gr.addItem(make_pair(SOLDIER_BUSTER_BUILDING[i], double(soldier_count[r][i]) / soldier_sum[r] * 100));
 					int bdchange = gr._rand();
 					if (bdchange) bdtype = bdchange;
@@ -522,6 +530,7 @@ void _defend(int defend_base = 0) {
 								if (!defend_base)
 									if (i + j <= 60)
 										gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+									else;
 								else
 									if (i < 16 && j < 16)
 										gr.addItem(make_pair(i * MAP_SIZE + j, 40000 / (i + j)));//Defend Base
@@ -610,14 +619,9 @@ void _frenzy_mode() {
 	pair<int, int> min_dis = make_pair(400, 0);
 	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
 		min_dis = min(min_dis, make_pair(distance(Pos(i->pos), Position(0, 0)), Pos(i->pos).x * MAP_SIZE + Pos(i->pos).y));
-	/*
-	if (min_dis < make_pair(250, 0) && state->turn < 100) {
-		for (int i = 1; i <= road_count; ++i)
-			crisis_value[0][0][i] = 1e7;
-	}
-	*/
+
 	if (min_dis < make_pair(150, 0)) {
-		pair<int, int> min_road = make_pair(1000, 0);
+		pair<int, int> min_road = make_pair(1000, 1);
 		for (int i = 1; i <= road_count; ++i) {
 			Position t = nearestRoad(Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE), i, 30);
 			if (distance(t, Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE)) < min_road.first)
@@ -625,10 +629,8 @@ void _frenzy_mode() {
 		}
 		CQC_flag = min_road.second;
 	}
-	//if (ts19_flag && state->turn >= 20)
-	//	CQC_flag = 1;
 
-	if ((my_resource >= FRENZY_LIMIT && frenzy_flag == 0 && state->building[ts19_flag].size() - 1 >= buildingLimit()) || (CQC_flag && !frenzy_flag))
+	if ((my_resource >= FRENZY_LIMIT && !frenzy_flag && state->building[ts19_flag].size() - 1 >= buildingLimit()) || (CQC_flag && !frenzy_flag))
 		frenzy_flag = 1;
 	if (my_resource < FRENZY_LIMIT / 5 && !CQC_flag)
 		frenzy_flag = 0;
@@ -637,7 +639,7 @@ void _frenzy_mode() {
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer)
 				++tot_programmer;
-		int remain_programmer = CQC_flag ? 30 : int(tot_programmer * FRENZY_FACTOR);
+		int remain_programmer = CQC_flag ? 25 : int(tot_programmer * FRENZY_FACTOR);
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer && tot_programmer > remain_programmer) {
 				sell(i->unit_id);
@@ -651,13 +653,16 @@ void _frenzy_mode() {
 		debug("FRENZY\n");
 		if (CQC_flag) {
 			GenRandom gr;
-			gr.addItem(make_pair(0, 10));
-			gr.addItem(make_pair(1, 6));
-			gr.addItem(make_pair(2, 3));
+			gr.addItem(make_pair(0, 20));
+			gr.addItem(make_pair(1, 7));
+			gr.addItem(make_pair(2, 6));
 			gr.addItem(make_pair(3, 1));
 			switch (gr._rand()) {
 				case 1:
 					_defend(1);
+				case 0:
+					_attack(CQC_flag);
+					_UpdateAge();
 					break;
 				case 2:
 					_maintain();
@@ -668,10 +673,12 @@ void _frenzy_mode() {
 					break;
 			}
 		}
-		_attack(CQC_flag);
-		_UpdateAge();
-		_upgradeBuilding();
-		_maintain();
+		else {
+			_attack(CQC_flag);
+			_UpdateAge();
+			_upgradeBuilding();
+			_maintain();
+		}
 	}
 }
 
