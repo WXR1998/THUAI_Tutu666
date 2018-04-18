@@ -1,9 +1,9 @@
-//#include "stdafx.h"
+#include "stdafx.h"
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0418.16
+		0.0418.23
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -130,11 +130,19 @@ const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
+int cqc_defend_flag = 0;
+int cqc_attack_flag = 0;
 const double FRENZY_FACTOR = 0.3;
 const double ROAD_DEFENCE_FACTOR = 4e-1;	//When not on major road, the crisis factor should mult.
+const int CQC_MODE_OPERATION_BIAS[4] = {
+	20,		//Attack
+	7,		//Defend
+	6,		//Maintain
+	1		//Build Programmer
+};
 
-											//#############################################################################################
-											//Aux. class definition
+//#############################################################################################
+//Aux. class definition
 class GenRandom {
 	/*
 	To generate random number by certain probablity
@@ -445,6 +453,18 @@ void _maintain() {
 	}
 }
 bool _build_a_programmer() {
+	if (state->turn == 0) {
+		Position p = Position(7, 0);
+		for (;;)
+			if (_construct(Programmer, Pos(p))) {
+				forbidConstruct(p);
+				my_resource -= BUILDING_RESOURCE[Programmer];
+				my_building_credits -= BUILDING_BUILDINGCOST[Programmer];
+				p = Position(p.x + 8, p.y);
+			}
+			else
+				break;
+	}
 	for (int i = 0; i < 20; ++i)
 		for (int j = 0; j < 20; ++j)
 			if (canConstruct(Position(i, j)))
@@ -615,7 +635,35 @@ void crisisValuePrint() {
 }
 
 void _frenzy_mode() {
-	int CQC_flag = 0;
+	if (my_resource >= FRENZY_LIMIT && !frenzy_flag && state->building[ts19_flag].size() - 1 >= buildingLimit())
+		frenzy_flag = 1;
+	if (my_resource < FRENZY_LIMIT / 5)
+		frenzy_flag = 0;
+	if (frenzy_flag == 1) {
+		int tot_programmer = 0;
+		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
+			if (i->building_type == Programmer)
+				++tot_programmer;
+		int remain_programmer = int(tot_programmer * FRENZY_FACTOR);
+		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
+			if (i->building_type == Programmer && tot_programmer > remain_programmer) {
+				sell(i->unit_id);
+				--tot_programmer;
+				--my_build_request;
+				debug("Sell Programmer\n");
+			}
+		frenzy_flag = 2;
+	}
+	if (frenzy_flag == 2) {
+		_attack();
+		_UpdateAge();
+		_upgradeBuilding();
+		_maintain();
+	}
+}
+
+void _CQC_defend_mode() {
+	int cqc_road = 0;
 	pair<int, int> min_dis = make_pair(400, 0);
 	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
 		min_dis = min(min_dis, make_pair(distance(Pos(i->pos), Position(0, 0)), Pos(i->pos).x * MAP_SIZE + Pos(i->pos).y));
@@ -627,19 +675,19 @@ void _frenzy_mode() {
 			if (distance(t, Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE)) < min_road.first)
 				min_road = make_pair(distance(t, Position(min_dis.second / MAP_SIZE, min_dis.second % MAP_SIZE)), i);
 		}
-		CQC_flag = min_road.second;
+		cqc_road = min_road.second;
 	}
 
-	if ((my_resource >= FRENZY_LIMIT && !frenzy_flag && state->building[ts19_flag].size() - 1 >= buildingLimit()) || (CQC_flag && !frenzy_flag))
-		frenzy_flag = 1;
-	if (my_resource < FRENZY_LIMIT / 5 && !CQC_flag)
-		frenzy_flag = 0;
-	if (frenzy_flag == 1) {
+	if (cqc_road && !cqc_defend_flag)
+		cqc_defend_flag = 1;
+	if (!cqc_road)
+		cqc_defend_flag = 0;
+	if (cqc_defend_flag == 1) {
 		int tot_programmer = 0;
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer)
 				++tot_programmer;
-		int remain_programmer = CQC_flag ? 25 : int(tot_programmer * FRENZY_FACTOR);
+		int remain_programmer = 25;
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer && tot_programmer > remain_programmer) {
 				sell(i->unit_id);
@@ -647,39 +695,41 @@ void _frenzy_mode() {
 				--my_build_request;
 				debug("Sell Programmer\n");
 			}
-		frenzy_flag = 2;
+		cqc_defend_flag = 2;
 	}
-	if (frenzy_flag == 2) {
-		debug("FRENZY\n");
-		if (CQC_flag) {
-			GenRandom gr;
-			gr.addItem(make_pair(0, 20));
-			gr.addItem(make_pair(1, 7));
-			gr.addItem(make_pair(2, 6));
-			gr.addItem(make_pair(3, 1));
-			switch (gr._rand()) {
-				case 1:
-					_defend(1);
-				case 0:
-					_attack(CQC_flag);
-					_UpdateAge();
-					break;
-				case 2:
-					_maintain();
-					_upgradeBuilding();
-					break;
-				case 3:
-					_build_programmer();
-					break;
-			}
-		}
-		else {
-			_attack(CQC_flag);
+	if (cqc_defend_flag == 2 && cqc_road) {
+		debug("CQC DEFEND\n");
+		GenRandom gr;
+		for (int i = 0; i < 4; ++i)
+			gr.addItem(make_pair(i, CQC_MODE_OPERATION_BIAS[i]));
+		switch (gr._rand()) {
+		case 1:
+			_defend(1);
+		case 0:
+			_attack(cqc_road);
 			_UpdateAge();
-			_upgradeBuilding();
+			break;
+		case 2:
 			_maintain();
+			_upgradeBuilding();
+			break;
+		case 3:
+			_build_programmer();
+			break;
 		}
 	}
+}
+
+void _CQC_attack_mode() {
+	if (!cqc_attack_flag) {
+		if (state->turn > 10) return;
+		pair<int, int> min_dis = make_pair(400, 0);
+		for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
+			min_dis = min(min_dis, make_pair(distance(Pos(i->pos), Position(0, 0)), Pos(i->pos).x * MAP_SIZE + Pos(i->pos).y));
+		if (min_dis < make_pair(350, 0) && state->turn < 2)
+			cqc_attack_flag = 1;
+	}
+
 }
 
 //#############################################################################################
@@ -722,16 +772,15 @@ void f_player() {
 				ans = max(buildingCrisisValue(*i, 0, j) + buildingCrisisValue(*i, 1, j), ans);
 			if (ans > 1)
 				outp.push_back(make_pair(i->building_type, ans));
-			//debug("Bud %2d, %e\n", i->building_type, ans);
 			vis[i->building_type] = 1;
 		}
 	sort(outp.begin(), outp.end());
 	for (auto i = outp.begin(); i != outp.end(); ++i)
 		debug("Bud %2d, [%16s], %6.1lf\n", i->first, BUILDING_NAME[i->first], i->second / 1e6);
 
-
-	//if (fatal_error) exit(1);
+	_CQC_defend_mode();
 	_frenzy_mode();
+
 	if (frenzy_flag == 0) {
 		_update_age();
 		_build_programmer();
