@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0416.20
+		0.0418.16
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -63,14 +63,23 @@ const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", 
 const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
-const int BUILDING_BIAS[17] = { 0, 2, 1, 8, 8, 25, 30, 20, 30,
+const int BUILDING_BIAS[17] = { 0, 
+	2,		//Bit stream
+	1,		//Voltage source
+	8,		//Current source
+	30,		//ENIAC
+	10,		//Packet
+	30,		//Optical fiber
+	10,		//Turing machine
+	30,		//Ultron
+
 	5,		//Bool
 	8,		//Ohm
 	8,		//Mole
-	20,		//Monte Carlo
+	30,		//Monte Carlo
 	30,		//Larry Roborts
 	20,		//Robort Kahn
-	10,		//Musk
+	15,		//Musk
 	20,		//Hawkin
 };//The probability of build the building
 
@@ -80,9 +89,9 @@ const double SOLDIER_CRISIS_FACTOR[8] = {
 	4,		//CURRENT_SOURCE
 	8,		//ENIAC
 	1.4,	//PACKAGE
-	1.5,	//OPTICAL_FIBER
+	2,	//OPTICAL_FIBER
 	30,		//TURING_MACHINE
-	1e-1	//ULTRON
+	1.5e-1	//ULTRON
 };
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	70,		//Bool
@@ -101,6 +110,7 @@ const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
 const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
+const int SOLDIER_BUSTER_BUILDING[8] = { Bool, Ohm, Ohm, Mole, Larry_Roberts, Monte_Carlo, Robert_Kahn, Hawkin};
 
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
@@ -111,10 +121,10 @@ const double SOLDIER_ATTACK_FACTOR = 1e0;	//Adjust the power of soldier, to bala
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
-const double MAX_CRISIS[2] = { 0, -5e6 };
+const double MAX_CRISIS[2] = { 0, -1 };
 const double MIN_ATTACK[6] = { 1e10, 2e10, 4e10, 8e10, 16e10, 32e10 };
-const double PROGRAMMER_RATIO[6] = { 0.82, 0.82, 0.6, 0.5, 0.4, 0.4 };
-const double PROGRAMMER_MIN_PARTITION[6] = { 0.75, 0.75, 0.6, 0.5, 0.4, 0.4 };
+const double PROGRAMMER_RATIO[6] = { 0.9, 0.9, 0.8, 0.6, 0.5, 0.4 };
+const double PROGRAMMER_MIN_PARTITION[6] = { 0.8, 0.8, 0.7, 0.6, 0.5, 0.4 };
 const int UPDATE_AGE_BIAS[6] = { 50, 40, 40, 30, 30, 20 };
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
 
@@ -482,6 +492,11 @@ void _defend(int defend_base = 0) {
 	while (!h.empty()) h.pop();
 	GenRandom gr;
 	Timer timer;
+	int soldier_count[10][10] = {}, soldier_sum[10] = {};
+	for (auto i = state->soldier[!ts19_flag].begin(); i != state->soldier[!ts19_flag].end(); ++i) {
+		soldier_count[road_number[Pos(i->pos).x][Pos(i->pos).y]][i->soldier_name] ++;
+		soldier_sum[road_number[Pos(i->pos).x][Pos(i->pos).y]] ++;
+	}
 	while (operation_count > 0) {
 		int exit_flag = 0;
 		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
@@ -494,12 +509,19 @@ void _defend(int defend_base = 0) {
 							gr.addItem(make_pair(p, BUILDING_BIAS[p]));
 					int bdtype = gr._rand();
 					gr.clear();
+					gr.addItem(make_pair(0, 50));//0 Means not change the building type
+					for (int i = 1; i < 8; ++i)//Bool is too weak
+						if (BUILDING_UNLOCK_AGE[SOLDIER_BUSTER_BUILDING[i]] <= state->age[ts19_flag])
+							gr.addItem(make_pair(SOLDIER_BUSTER_BUILDING[i], double(soldier_count[r][i]) / soldier_sum[r] * 100));
+					int bdchange = gr._rand();
+					if (bdchange) bdtype = bdchange;
 					//To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
 					for (int i = 0; i < MAP_SIZE; ++i)
 						for (int j = 0; j < MAP_SIZE; ++j)
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
 								if (!defend_base)
-									gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+									if (i + j <= 60)
+										gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
 								else
 									if (i < 16 && j < 16)
 										gr.addItem(make_pair(i * MAP_SIZE + j, 40000 / (i + j)));//Defend Base
@@ -550,7 +572,7 @@ void _attack(int fixed_road = 0) {
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)))
 					if (nearestRoad(Position(i, j), t.rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
-						if (!fixed_road || (fixed_road && i < 20 && j < 20))
+						if (!fixed_road && i + j <= 60 || (fixed_road && i < 20 && j < 20))
 							gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
