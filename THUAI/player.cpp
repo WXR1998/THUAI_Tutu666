@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0419.11
+		0.0419.16
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -71,7 +71,7 @@ const int BUILDING_BIAS[17] = { 0,
 	10,		//Packet
 	100,	//Optical fiber
 	10,		//Turing machine
-	20,		//Ultron
+	70,		//Ultron
 
 	5,		//Bool
 	8,		//Ohm
@@ -79,7 +79,7 @@ const int BUILDING_BIAS[17] = { 0,
 	30,		//Monte Carlo
 	30,		//Larry Roborts
 	20,		//Robort Kahn
-	15,		//Musk
+	30,		//Musk
 	20,		//Hawkin
 };//The probability of build the building
 
@@ -91,7 +91,7 @@ const double SOLDIER_CRISIS_FACTOR[8] = {
 	1.4,	//PACKAGE
 	3,		//OPTICAL_FIBER
 	30,		//TURING_MACHINE
-	1.5e-1	//ULTRON
+	3e-1	//ULTRON
 };
 const int BUILDING_DEFENCE[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	70,		//Bool
@@ -128,7 +128,7 @@ const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30,
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 1e0;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 3e0;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -139,7 +139,7 @@ const double PROGRAMMER_MIN_PARTITION[6] = { 0.8, 0.8, 0.7, 0.6, 0.5, 0.4 };
 const int UPDATE_AGE_BIAS[6] = { 50, 40, 40, 30, 30, 20 };
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
 
-const int FRENZY_LIMIT = 30000;
+const int FRENZY_LIMIT = 70000;
 int frenzy_flag = 0;
 int cqc_defend_flag = 0;
 int cqc_attack_flag = 0;  //0 normal   1 building programmer   2 attack
@@ -800,6 +800,7 @@ void _frenzy_mode() {
 		_UpdateAge();
 		_upgradeBuilding();
 		_maintain();
+		_defend();
 	}
 }
 
@@ -940,13 +941,13 @@ void f_player() {
 		GenRandom gr;
 		gr.addItem(make_pair(0, 100));
 		if (state->turn < 50)
-			gr.addItem(make_pair(1, 30));
+			gr.addItem(make_pair(1, 50));
 		else if (state->turn < 100)
-			gr.addItem(make_pair(1, 70));
+			gr.addItem(make_pair(1, 100));
 		else if (state->turn < 150)
 			gr.addItem(make_pair(1, 150));
 		else
-			gr.addItem(make_pair(1, 40));
+			gr.addItem(make_pair(1, 100));
 		if (gr._rand() == 1)
 			_defend();
 		_maintain();
