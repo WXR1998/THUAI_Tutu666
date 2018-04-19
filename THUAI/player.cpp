@@ -67,9 +67,9 @@ const int BUILDING_BIAS[17] = { 0,
 	2,		//Bit stream
 	1,		//Voltage source
 	8,		//Current source
-	60,		//ENIAC
+	20,		//ENIAC
 	10,		//Packet
-	60,		//Optical fiber
+	100,	//Optical fiber
 	10,		//Turing machine
 	20,		//Ultron
 
@@ -109,7 +109,7 @@ const double SOLDIER_RATIO_FACTOR[8] = {
 	2e-1,	//VOLTAGE_SOURCE
 	5e-1,	//CURRENT_SOURCE
 	1,		//ENIAC
-	1,		//PACKAGE
+	2,		//PACKAGE
 	1.5,	//OPTICAL_FIBER
 	1,		//TURING_MACHINE
 	1		//ULTRON
@@ -121,14 +121,14 @@ const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
 const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
-const int SOLDIER_BUSTER_BUILDING[8] = { Bool, Monte_Carlo, Ohm, Hawkin, Larry_Roberts, Monte_Carlo, Robert_Kahn, Hawkin};
+const int SOLDIER_BUSTER_BUILDING[8] = { Bool, Ohm, Ohm, Hawkin, Larry_Roberts, Monte_Carlo, Robert_Kahn, Hawkin};
 
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
 const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
-const double SOLDIER_ATTACK_FACTOR = 7e-1;	//Adjust the power of soldier, to balance the power of buildings
+const double SOLDIER_ATTACK_FACTOR = 1e0;	//Adjust the power of soldier, to balance the power of buildings
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
@@ -143,7 +143,7 @@ const int FRENZY_LIMIT = 30000;
 int frenzy_flag = 0;
 int cqc_defend_flag = 0;
 int cqc_attack_flag = 0;  //0 normal   1 building programmer   2 attack
-const int CQC_ATTACK_LIMIT = 4000;
+const int CQC_ATTACK_LIMIT = 2000;
 const int CQC_PROGRAMMER_LIMIT = 50;
 const int CQC_PROGRAMMER_LEAST_LIMIT = 40;
 const double FRENZY_FACTOR = 0.3;
@@ -624,7 +624,10 @@ void _defend(int defend_base = 0) {
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
 								if (!defend_base)
 									if (i + j <= 60)
-										gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+										if (bdtype != Hawkin)
+											gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+										else
+											gr.addItem(make_pair(i * MAP_SIZE + j, int(4000 / (i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
 									else;
 								else
 									if (i < 16 && j < 16)
@@ -731,10 +734,19 @@ void _build_cqc_building() {
 				--tot_programmer;
 			}
 	}
+	/*
+	if (state->turn > 47) {
+		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
+			if (i->building_type == Programmer) {
+				sell(i->unit_id);
+			}
+	}
+	*/
 	for (;operation_count > 0;) {
 		GenRandom gr;
 		gr.addItem(make_pair(1, 0));
-		gr.addItem(make_pair(3, 5));
+		gr.addItem(make_pair(2, 0));
+		gr.addItem(make_pair(3, 1));
 		int bdtype = gr._rand();
 		int buildflag = 0;
 		for (int i = MAP_SIZE - 15; i < MAP_SIZE && !buildflag; ++i)
@@ -858,6 +870,7 @@ void _CQC_attack_mode() {
 		debug("mindis = %d\n", min_dis);
 		if (min_dis < 360 && state->turn < 2)
 			cqc_attack_flag = 1;
+		//cqc_attack_flag = 1;
 	}
 	if (cqc_attack_flag) {
 		_build_programmer(1);
@@ -923,8 +936,19 @@ void f_player() {
 	if (frenzy_flag == 0 && cqc_attack_flag == 0) {
 		_update_age();
 		_build_programmer();
-		_defend();
 		_upgradeBuilding();
+		GenRandom gr;
+		gr.addItem(make_pair(0, 100));
+		if (state->turn < 50)
+			gr.addItem(make_pair(1, 30));
+		else if (state->turn < 100)
+			gr.addItem(make_pair(1, 70));
+		else if (state->turn < 150)
+			gr.addItem(make_pair(1, 150));
+		else
+			gr.addItem(make_pair(1, 40));
+		if (gr._rand() == 1)
+			_defend();
 		_maintain();
 		_attack();
 	}
