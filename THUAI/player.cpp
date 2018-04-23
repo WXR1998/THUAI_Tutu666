@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0419.16
+		0.0423.20
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -60,7 +60,7 @@ of defensive buildings.
 const char SOLDIER_NAME[10][20] = { "BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON" };
 const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
 "Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
-const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 150, 200, 225, 200, 250, 450, 500, 500, 100 };
+const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 120, 160, 225, 200, 250, 450, 500, 500, 100 };
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
 const int BUILDING_BIAS[17] = { 0, 
@@ -126,7 +126,7 @@ const int SOLDIER_BUSTER_BUILDING[8] = { Bool, Ohm, Ohm, Hawkin, Larry_Roberts, 
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 5, 5, 15, 20, 15, 15, 10, 32, 30, 36, 50, 40, 35, 24, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
-const int BUILDING_HEAL[18] = { 10000, 150, 200, 180, 200, 150, 160, 250, 220, 200, 320, 250, 350, 220, 520, 1000, 360, 100 };
+const int BUILDING_HEAL[18] = { 10000, 120, 160, 150, 200, 150, 160, 250, 220, 220, 320, 250, 350, 220, 520, 1000, 360, 100 };
 
 const double SOLDIER_ATTACK_FACTOR = 3e0;	//Adjust the power of soldier, to balance the power of buildings
 
@@ -134,12 +134,12 @@ const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
 const double MAX_CRISIS[2] = { 0, -1 };
 const double MIN_ATTACK[6] = { 1e10, 2e10, 4e10, 8e10, 16e10, 32e10 };
-const double PROGRAMMER_RATIO[6] = { 0.9, 0.9, 0.8, 0.6, 0.5, 0.4 };
-const double PROGRAMMER_MIN_PARTITION[6] = { 0.8, 0.8, 0.7, 0.6, 0.5, 0.4 };
-const int UPDATE_AGE_BIAS[6] = { 50, 40, 40, 30, 30, 20 };
+const double PROGRAMMER_RATIO[6] = { 0.95, 0.95, 0.8, 0.6, 0.5, 0.45 };
+const double PROGRAMMER_MIN_PARTITION[6] = { 0.85, 0.85, 0.7, 0.6, 0.5, 0.45 };
+const int UPDATE_AGE_BIAS[6] = { 70, 60, 50, 50, 50, 40 };
 const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
 
-const int FRENZY_LIMIT = 70000;
+const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
 int cqc_defend_flag = 0;
 int cqc_attack_flag = 0;  //0 normal   1 building programmer   2 attack
@@ -148,6 +148,7 @@ const int CQC_PROGRAMMER_LIMIT = 50;
 const int CQC_PROGRAMMER_LEAST_LIMIT = 40;
 const double FRENZY_FACTOR = 0.3;
 const double ROAD_DEFENCE_FACTOR = 4e-1;	//When not on major road, the crisis factor should mult.
+const int CQC_MODE = 0;
 const int CQC_MODE_OPERATION_BIAS[4] = {
 	20,		//Attack
 	7,		//Defend
@@ -871,7 +872,8 @@ void _CQC_attack_mode() {
 		debug("mindis = %d\n", min_dis);
 		if (min_dis < 360 && state->turn < 2)
 			cqc_attack_flag = 1;
-		//cqc_attack_flag = 1;
+		if (CQC_MODE == 1)
+			cqc_attack_flag = 1;
 	}
 	if (cqc_attack_flag) {
 		_build_programmer(1);
