@@ -1,4 +1,3 @@
-
 #include "stdafx.h"
 #include"communication.h"
 #include<thread>
