@@ -3,7 +3,7 @@
 	Author:
 		Tutu666
 	Version:
-		0.0425.19
+		0.0506.15
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
