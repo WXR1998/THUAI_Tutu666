@@ -115,18 +115,18 @@ const double SOLDIER_RATIO_FACTOR[8] = {
 	1		//ULTRON
 };
 
-const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,25, 8, 500 };
-const int SOLDIER_ATTACKRANGE[8] = { 16, 24,3,	10, 3,	40, 12, 20 };
-const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 3,	8 };
+const int SOLDIER_ATTACK[8] = { 10, 18,	160,12,	300,20, 8, 500 };
+const int SOLDIER_ATTACKRANGE[8] = { 12, 20,3,	5, 3,	32, 6, 15 };
+const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 6,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
 const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
 const int SOLDIER_BUSTER_BUILDING[8] = { Bool, Ohm, Ohm, Hawkin, Larry_Roberts, Monte_Carlo, Robert_Kahn, Musk};
 
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
-const int BUILDING_ATTACK_RANGE[17] = { 0, 8, 5, 5, 12, 10, 12, 10, 8, 32, 30, 36, 50, 40, 35, 24, 20 };
+const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 12, 8, 15, 10, 12, 15, 8, 32, 30, 36, 50, 40, 35, 15, 20 };
 const int BUILDING_LEVEL_FACTOR[6] = { 2, 3, 4, 5, 6, 7 };
-const int BUILDING_HEAL[18] = { 10000, 120, 160, 150, 200, 150, 160, 250, 220, 220, 320, 250, 350, 220, 520, 1000, 360, 100 };
+const int BUILDING_HEAL[18] = { 10000, 120, 160, 150, 200, 150, 160, 250, 220, 220, 320, 250, 350, 220, 520, 750, 360, 100 };
 
 const double SOLDIER_ATTACK_FACTOR = 3e0;	//Adjust the power of soldier, to balance the power of buildings
 
@@ -234,12 +234,21 @@ double my_building_credits;	//Building credits per turn
 int my_resource;	//My resource now
 int my_build_request;	//Building requests this turn
 bool can_construct[MAP_SIZE][MAP_SIZE];
+/*
+When initializing: allow = false, deny = true   can_const = allow && deny
+if this grid is covered by one other building's build range, allow = true
+if this grid is covered by one other building's forbid range, deny = false
+TODO
+*/
+bool allow_construct[MAP_SIZE][MAP_SIZE];
+bool deny_construct[MAP_SIZE][MAP_SIZE];
 
 int buildingLimit() {
 	return MAX_BD_NUM + MAX_BD_NUM_PLUS * state->age[ts19_flag];
 }
 bool canConstruct(Position p) {
-	return can_construct[p.x][p.y];
+	return allow_construct[p.x][p.y] && deny_construct[p.x][p.y];
+	//return can_construct[p.x][p.y];
 }
 
 int distance(Position a, Position b) {
@@ -267,10 +276,11 @@ bool _construct(BuildingType a, Position b, Position c = Position(0, 0)) {
 	return true;
 }
 bool _UpdateAge() {
+#define sqr(x) (x * x)
 	if (operation_count <= 0) return false;
 	if (state->age[ts19_flag] == 5) return false;
-	if (my_resource < UPDATE_COST + UPDATE_COST_PLUS * state->age[ts19_flag]) return false;
-	my_resource -= UPDATE_COST + UPDATE_COST_PLUS * state->age[ts19_flag];
+	if (my_resource < UPDATE_COST + UPDATE_COST_SQUARE * sqr(state->age[ts19_flag])) return false;
+	my_resource -= UPDATE_COST + UPDATE_COST_SQUARE * sqr(state->age[ts19_flag]);
 	--operation_count;
 	updateAge();
 	return true;
