@@ -1,9 +1,9 @@
-//#include "stdafx.h"
+#include "stdafx.h"
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0506.15
+		0.0507.11
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -137,7 +137,7 @@ const double MIN_ATTACK[6] = { 1e10, 2e10, 4e10, 8e10, 16e10, 32e10 };
 const double PROGRAMMER_RATIO[6] = { 1, 0.95, 0.8, 0.6, 0.5, 0.45 };
 const double PROGRAMMER_MIN_PARTITION[6] = { 1, 0.85, 0.7, 0.6, 0.5, 0.45 };
 const int UPDATE_AGE_BIAS[6] = { 99, 90, 80, 70, 70, 70 };
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 3;
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 12;
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
@@ -155,6 +155,7 @@ const int CQC_MODE_OPERATION_BIAS[4] = {
 	6,		//Maintain
 	1		//Build Programmer
 };
+const int MAX_PROGRAMMER_POS = 120;
 
 //#############################################################################################
 //Aux. class definition
@@ -233,12 +234,10 @@ int operation_count;	//Operation limit per turn
 double my_building_credits;	//Building credits per turn
 int my_resource;	//My resource now
 int my_build_request;	//Building requests this turn
-bool can_construct[MAP_SIZE][MAP_SIZE];
 /*
 When initializing: allow = false, deny = true   can_const = allow && deny
 if this grid is covered by one other building's build range, allow = true
 if this grid is covered by one other building's forbid range, deny = false
-TODO
 */
 bool allow_construct[MAP_SIZE][MAP_SIZE];
 bool deny_construct[MAP_SIZE][MAP_SIZE];
@@ -248,7 +247,6 @@ int buildingLimit() {
 }
 bool canConstruct(Position p) {
 	return allow_construct[p.x][p.y] && deny_construct[p.x][p.y];
-	//return can_construct[p.x][p.y];
 }
 
 int distance(Position a, Position b) {
@@ -327,57 +325,48 @@ void getRoadNumber() {
 				road_grid[road_number[i][j]].push_back(Position(i, j));
 }
 
-bool building_pos[MAP_SIZE][MAP_SIZE];
-void updateConstruct(Position p) {
-	for (int i = p.x - BD_RANGE; i <= p.x + BD_RANGE; ++i)
-		for (int j = p.y - BD_RANGE; j <= p.y + BD_RANGE; ++j)
-			if (positionIsValid(Position(i, j)) && distance(Position(i, j), p) <= BD_RANGE) {
-				can_construct[i][j] = true;
-				if (building_pos[i][j]) can_construct[i][j] = false;
-			}
-	for (int j = 0; j < 4; ++j) {
-		int px = p.x + dir[j][0], py = p.y + dir[j][1];
-		if (positionIsValid(Position(px, py))) {
-			can_construct[px][py] = false;
-			building_pos[px][py] = true;
-		}
-	}
-	can_construct[p.x][p.y] = false;
-	building_pos[p.x][p.y] = true;
+void updateAllow(Position p) {
+	for (int i = p.x - MAX_BD_RANGE; i <= p.x + MAX_BD_RANGE; ++i)
+		for (int j = p.y - MAX_BD_RANGE; j <= p.y + MAX_BD_RANGE; ++j)
+			if (positionIsValid(Position(i, j)) && distance(Position(i, j), p) <= MAX_BD_RANGE)
+				allow_construct[i][j] = true;
 }
+void updateDeny(Position p) {
+	for (int i = p.x - MIN_BD_RANGE; i <= p.x + MIN_BD_RANGE; ++i)
+		for (int j = p.y - MIN_BD_RANGE; j <= p.y + MIN_BD_RANGE; ++j)
+			if (positionIsValid(Position(i, j)) && distance(Position(i, j), p) <= MIN_BD_RANGE)
+				deny_construct[i][j] = false;
+}
+void updateConstruct(Position p) {
+	updateAllow(p);
+	updateDeny(p);
+}
+
 void canConstructUpdate() {
 	for (int i = 0; i < MAP_SIZE; ++i)
-		for (int j = 0; j < MAP_SIZE; ++j)
-			can_construct[i][j] = building_pos[i][j] = false;
+		for (int j = 0; j < MAP_SIZE; ++j) {
+			allow_construct[i][j] = false;
+			deny_construct[i][j] = true;
+		}
 	for (int i = 0; i < 7 + BD_RANGE_FROM_BASE; ++i)
 		for (int j = 0; j < 7 + BD_RANGE_FROM_BASE; ++j)
-			if (i < 7 && j < 7);
+			if (i < 7 && j < 7)
+				deny_construct[i][j] = false;
 			else
-				can_construct[i][j] = true;
-	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
-		for (int j = Pos((*i).pos).x - BD_RANGE; j <= Pos((*i).pos).x + BD_RANGE; ++j)
-			for (int k = Pos((*i).pos).y - (BD_RANGE - abs(j - Pos((*i).pos).x)); k <= Pos((*i).pos).y + (BD_RANGE - abs(j - Pos((*i).pos).x)); ++k)
-				if (positionIsValid(Position(j, k)))
-					can_construct[j][k] = true;
+				allow_construct[i][j] = true;
+	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i) {
+		if (i->building_type == Base) continue;
+		updateAllow(Pos(i->pos));
+		updateDeny(Pos(i->pos));
+	}
+	for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i) {
+		if (i->building_type == Base) continue;
+		updateDeny(Pos(i->pos));
+	}
 	for (int i = 0; i < MAP_SIZE; ++i)
 		for (int j = 0; j < MAP_SIZE; ++j)
-			if (ts19_map[i][j] != 0) {
-				can_construct[i][j] = false;
-				building_pos[i][j] = true;
-			}
-	for (int t = 0; t < 2; ++ t)
-		for (auto i = state->building[t].begin(); i != state->building[t].end(); ++i) {
-			if (i->building_type == Base) continue;
-			for (int j = 0; j < 4; ++j) {
-				int px = Pos(i->pos).x + dir[j][0], py = Pos(i->pos).y + dir[j][1];
-				if (positionIsValid(Position(px, py))) {
-					building_pos[px][py] = true;
-					can_construct[px][py] = false;
-				}
-			}
-			can_construct[Pos(i->pos).x][Pos(i->pos).y] = false;
-			building_pos[Pos(i->pos).x][Pos(i->pos).y] = true;
-		}
+			if (ts19_map[i][j] != 0)
+				deny_construct[i][j] = false;
 }
 
 int pos_cover_grid[MAP_SIZE][MAP_SIZE][60][8] = { 0 };
@@ -508,8 +497,9 @@ bool _build_a_programmer(Position p = (-1, -1)) {
 		}
 		else
 			return false;
-	for (int i = 0; i < 20; ++i)
-		for (int j = 0; j < 20; ++j)
+	for (int sum = 12; sum < MAX_PROGRAMMER_POS; ++ sum)
+		for (int i = 0; i < MAX_PROGRAMMER_POS; ++i) {
+			int j = sum - i;
 			if (canConstruct(Position(i, j)))
 				if (_construct(Programmer, Pos(Position(i, j)))) {
 					updateConstruct(Position(i, j));
@@ -519,6 +509,7 @@ bool _build_a_programmer(Position p = (-1, -1)) {
 				}
 				else
 					return false;
+		}
 	return false;
 }
 void _build_programmer(int cqc_mode = 0) {
@@ -562,11 +553,11 @@ void _build_programmer(int cqc_mode = 0) {
 			if (thead.x < 192)
 				thead = Position(thead.x + 8, thead.y);
 			else if (thead.x < 199)
-				thead = Position(199, thead.y + BD_RANGE - (199 - thead.x));
+				thead = Position(199, thead.y + MAX_BD_RANGE - (199 - thead.x));
 			else if (thead.y < 120)
 				thead = Position(thead.x, thead.y + 8);
 			else break;
-			for (int range = 0; range <= BD_RANGE && !canConstruct(thead); ++ range)
+			for (int range = 0; range <= MAX_BD_RANGE && !canConstruct(thead); ++ range)
 				for (int i = thead.x - range; i <= thead.x + range && !canConstruct(thead); ++ i)
 					for (int j = thead.y - range; j <= thead.y + range && !canConstruct(thead); ++ j)
 						if (positionIsValid(Position(i, j)) && canConstruct(Position(i, j)))
@@ -634,7 +625,7 @@ void _defend(int defend_base = 0) {
 						for (int j = 0; j < MAP_SIZE; ++j)
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
 								if (!defend_base)
-									if (i + j <= 60)
+									if (i + j <= 200)
 										if (bdtype != Hawkin)
 											gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
 										else
@@ -690,14 +681,14 @@ void _attack(int fixed_road = 0) {
 			for (int j = 0; j < MAP_SIZE; ++j)
 				if (canConstruct(Position(i, j)))
 					if (nearestRoad(Position(i, j), t.rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
-						if (!fixed_road && i + j <= 60 || (fixed_road && i < 20 && j < 20))
+						if (!fixed_road && i + j <= 200 || (fixed_road && i < 20 && j < 20))
 							gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
 		int tmppos = gr._rand();
 		Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 		Position prpos = Position(-1, -1);
 		if (fixed_road) {
-			for (int i = 0; i < 20; ++ i)
-				for (int j = 0; j < 20; ++ j)
+			for (int i = 0; i < 60; ++ i)
+				for (int j = 0; j < 60; ++ j)
 					if (road_number[i][j] == fixed_road && distance(bdpos, Position(i, j)) < BUILDING_ATTACK_RANGE[bdtype]) {
 						if (prpos.x == -1 || i + j < prpos.x + prpos.y)
 							prpos = Position(i, j);
@@ -726,7 +717,7 @@ void _build_cqc_building() {
 		Position thead = head;
 		if (thead.y < 180)
 			thead = Position(thead.x, thead.y + 8);
-		for (int range = 0; range <= BD_RANGE && !canConstruct(thead); ++range)
+		for (int range = 0; range <= MAX_BD_RANGE && !canConstruct(thead); ++range)
 			for (int i = thead.x - range; i <= thead.x + range && !canConstruct(thead); ++i)
 				for (int j = thead.y - range; j <= thead.y + range && !canConstruct(thead); ++j)
 					if (positionIsValid(Position(i, j)) && canConstruct(Position(i, j)))
@@ -880,6 +871,7 @@ void _CQC_defend_mode() {
 
 void _CQC_attack_mode() {
 	if (!cqc_attack_flag) {
+		return;
 		if (state->turn > 10) return;
 		int min_dis = 400;
 		for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
@@ -959,11 +951,11 @@ void f_player() {
 
 		gr.addItem(make_pair(0, 100));
 		if (state->turn < 60)
-			gr.addItem(make_pair(1, 40));
+			gr.addItem(make_pair(1, 20));
 		else if (state->turn < 85)
-			gr.addItem(make_pair(1, 200));
+			gr.addItem(make_pair(1, 100));
 		else if (state->turn < 120)
-			gr.addItem(make_pair(1, 300));
+			gr.addItem(make_pair(1, 150));
 		else if (state->turn < 150)
 			gr.addItem(make_pair(1, 150));
 		else
@@ -976,9 +968,9 @@ void f_player() {
 		if (state->turn < 50)
 			gr.addItem(make_pair(1, 50));
 		else if (state->turn < 100)
-			gr.addItem(make_pair(1, 80));
+			gr.addItem(make_pair(1, 120));
 		else if (state->turn < 150)
-			gr.addItem(make_pair(1, 150));
+			gr.addItem(make_pair(1, 140));
 		else
 			gr.addItem(make_pair(1, 100));
 		if (gr._rand() == 1)
