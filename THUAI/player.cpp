@@ -1,9 +1,10 @@
 //#include "stdafx.h"
+const bool FORBID_CQC = false;
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0509.02
+		0.0509.21
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -57,6 +58,9 @@ of defensive buildings.
 //#############################################################################################
 //const values definitions
 
+const int DEFEND_MIN_DIS_FROM_BASE = 150;
+const int DEFEND_MAX_DIS_FROM_BASE = 180;
+
 const char SOLDIER_NAME[10][20] = { "BIT_STREAM", "VOLTAGE_SOURCE", "CURRENT_SOURCE", "ENIAC", "PACKET", "OPTICAL_FIBER", "TURING_MACHINE", "ULTRON" };
 const char BUILDING_NAME[18][20] = { "__Base", "Shannon", "Thevenin", "Norton", "Von_Neumann", "Berners_Lee", "Kuen_Kao", "Turing", "Tony_Stark", "Bool", "Ohm",
 "Mole", "Monte_Carlo", "Larry_Roberts", "Robert_Kahn", "Musk", "Hawkin", "Programmer" };
@@ -64,11 +68,11 @@ const int BUILDING_RESOURCE[18] = { 0, 150, 160, 160, 200, 250, 400, 600, 600, 1
 const int BUILDING_BUILDINGCOST[18] = { 0, 15, 16, 16, 20, 25, 40, 60, 60, 15, 20, 22, 20, 25, 45, 50, 50, 10 };
 const int BUILDING_UNLOCK_AGE[18] = { 0, 0, 1, 1, 2, 4, 4, 5, 5, 0, 1, 2, 3, 4, 4, 5, 5, 0 };
 const int BUILDING_BIAS[17] = { 0, 
-	2,		//Bit stream
-	8,		//Voltage source
+	1,		//Bit stream
+	2,		//Voltage source
 	0,		//Current source
 	8,		//ENIAC
-	8,		//Packet
+	4,		//Packet
 	40,		//Optical fiber
 	10,		//Turing machine
 	50,		//Ultron
@@ -121,7 +125,7 @@ const int SOLDIER_SPEED[8] = { 12, 8,	15,	4,	16, 12, 6,	8 };
 const int _SOLDIER_TYPE[8] = { 1,	0,	0,	0,	1,	0,	1,	0 };
 const int SOLDIER_MOVETYPE[8] = { 0,	0,	1,	2,	1,	0,	2,	0 };
 const double SOLDIER_MOVETYPE_CRISIS_FACTOR[3] = { 1e1, 4e0, 2e0 };//push tower / charge / tank
-const int SOLDIER_BUSTER_BUILDING[8] = { Bool, Ohm, Ohm, Hawkin, Larry_Roberts, Monte_Carlo, Robert_Kahn, Musk};
+const int SOLDIER_BUSTER_BUILDING[8] = { Bool, Ohm, Ohm, Hawkin, Larry_Roberts, Larry_Roberts, Robert_Kahn, Musk};
 
 const int _BUILDING_TYPE[17] = { 3, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 2, 1, 2, 2 };//realbody(0) data(1) all(2)
 const int BUILDING_ATTACK_RANGE[17] = { 0, 10, 12, 8, 15, 10, 12, 15, 8, 32, 30, 36, 50, 40, 35, 15, 20 };
@@ -137,13 +141,13 @@ const double MIN_ATTACK[6] = { 1e10, 2e10, 4e10, 8e10, 16e10, 32e10 };
 const double PROGRAMMER_RATIO[6] = { 1, 0.95, 0.8, 0.6, 0.5, 0.45 };
 const double PROGRAMMER_MIN_PARTITION[6] = { 1, 0.85, 0.7, 0.6, 0.5, 0.45 };
 const int UPDATE_AGE_BIAS[6] = { 99, 90, 80, 70, 70, 70 };
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 16;
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 12;
 
 /*
 Probablity per 20 turns.
 */
-const int ATTACK_PROB[] = {20, 20, 100, 200, 250, 250, 150, 100, 80, 80, 100};
-const int DEFEND_PROB[] = {50, 50, 50, 120, 130, 140, 150, 140, 120, 100, 100};
+const int ATTACK_PROB[] = {0, 0, 50, 60, 60, 70, 80, 80, 70, 70, 70};
+const int DEFEND_PROB[] = {25, 30, 40, 80, 80, 85, 85, 80, 80, 80, 80};
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
@@ -259,6 +263,7 @@ bool canConstruct(Position p) {
 }
 
 int distance(Position a, Position b) {
+	if (a.x == -1 || b.x == -1) return 10000;
 	return abs(a.x - b.x) + abs(a.y - b.y);
 }
 Position inversePosition(Position p) {
@@ -351,7 +356,6 @@ void updateDeny(Position p) {
 				deny_construct[i][j] = false;
 }
 void updateConstruct(Position p) {
-	debug("update %d %d\n", p.x, p.y);
 	updateAllow(p);
 	updateDeny(p);
 }
@@ -541,19 +545,18 @@ void _build_programmer(int cqc_mode = 0) {
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (distance(Pos(i->pos), Position(0, 0)) > distance(head, Position(0, 0)))
 				head = Pos(i->pos);
-		debug("%d %d\n", head.x, head.y);
 		int tot_programmer = 0;
 		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 			if (i->building_type == Programmer)
 				++tot_programmer;
 		for (;tot_programmer < CQC_PROGRAMMER_LIMIT;) {
 			Position thead = head;
-			if (thead.x < 192)
-				thead = Position(thead.x + 8, thead.y);
+			if (thead.x < 190)
+				thead = Position(thead.x + MAX_BD_RANGE, thead.y);
 			else if (thead.x < 199)
 				thead = Position(199, thead.y + MAX_BD_RANGE - (199 - thead.x));
 			else if (thead.y < 120)
-				thead = Position(thead.x, thead.y + 8);
+				thead = Position(thead.x, thead.y + MAX_BD_RANGE);
 			else break;
 			for (int range = 0; range <= MAX_BD_RANGE && !canConstruct(thead); ++ range)
 				for (int i = thead.x - range; i <= thead.x + range && !canConstruct(thead); ++ i)
@@ -600,11 +603,13 @@ void _defend(int defend_base = 0) {
 		if (sum > 12)
 			return;
 	}
+
 	while (operation_count > 0) {
 		int exit_flag = 0;
 		for (int typ = 0; typ < 2 && operation_count > 0; ++typ)
 			for (int r = 1; r <= road_count && operation_count > 0; ++r)
 				if (crisis_value[0][typ][r] > MAX_CRISIS[typ] || defend_base && typ == 1) {
+					debug("Defend %d\n", r);
 					exit_flag++;
 					gr.clear();
 					for (int p = 9; p < 17; ++p)
@@ -619,15 +624,22 @@ void _defend(int defend_base = 0) {
 					int bdchange = gr._rand();
 					if (bdchange) bdtype = bdchange;
 					//To save time, defensive building can only be built in the distance of DEFEND_BUILDING_TO_ROAD_DISTANCE far from road.
+					int max_dis = 0;
+					for (int i = 0; i < MAP_SIZE; ++i)
+						for (int j = 0; j < MAP_SIZE; ++j)
+							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
+								max_dis = max(max_dis, i+j);
 					for (int i = 0; i < MAP_SIZE; ++i)
 						for (int j = 0; j < MAP_SIZE; ++j)
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
 								if (!defend_base)
-									if (i + j <= 180)
-										if (bdtype != Hawkin)
-											gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
-										else
-											gr.addItem(make_pair(i * MAP_SIZE + j, int(4000 / (i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+									if (i + j <= DEFEND_MAX_DIS_FROM_BASE)
+										if (max_dis > DEFEND_MIN_DIS_FROM_BASE)
+											gr.addItem(make_pair(i * MAP_SIZE + j, int((posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+										else {
+#define x3(x) ((x)*(x)*(x))
+											gr.addItem(make_pair(i * MAP_SIZE + j, int(x3(i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
+										}
 									else;
 								else
 									if (i < 16 && j < 16)
@@ -706,6 +718,7 @@ void _build_cqc_building() {
 	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		if (distance(Pos(i->pos), Position(0, 0)) > distance(Position(0, 0), head))
 			head = Pos(i->pos);
+
 	while (distance(head, Position(199, 199)) > 40) {
 		Position thead = head;
 		if (thead.y < 160)
@@ -740,12 +753,12 @@ void _build_cqc_building() {
 	for (;operation_count > 0;) {
 		GenRandom gr;
 		gr.addItem(make_pair(1, 1));
-		gr.addItem(make_pair(2, 2));
+		//gr.addItem(make_pair(2, 2));
 		gr.addItem(make_pair(3, 1));
 		int bdtype = gr._rand();
 		int buildflag = 0;
-		for (int i = MAP_SIZE - 15; i < MAP_SIZE && !buildflag; ++i)
-			for (int j = MAP_SIZE - 15; j < MAP_SIZE && !buildflag; ++j)
+		for (int i = MAP_SIZE - 1; i > MAP_SIZE - 60 && !buildflag; --i)
+			for (int j = MAP_SIZE - 1; j > MAP_SIZE - 60 && !buildflag; --j)
 				if (canConstruct(Position(i, j))) {
 					int flag = 0;
 					for (int k = 1; k <= road_count; ++k)
@@ -861,12 +874,12 @@ void _CQC_defend_mode() {
 
 void _CQC_attack_mode() {
 	if (!cqc_attack_flag) {
+		if (FORBID_CQC) return;
 		if (state->turn > 10) return;
 		int min_dis = 400;
 		for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
 			min_dis = min(min_dis, distance(Pos(i->pos), Position(0, 0)));
-		debug("mindis = %d\n", min_dis);
-		if (min_dis < 360 && state->turn < 2)
+		if (min_dis < 320 && state->turn < 3)
 			cqc_attack_flag = 1;
 		if (CQC_MODE == 1)
 			cqc_attack_flag = 1;
@@ -910,7 +923,7 @@ void f_player() {
 	calcCriAttValue();
 
 
-	crisisValuePrint();
+	//crisisValuePrint();
 
 	int vis[20] = { 0 };
 	vector<pair<int, double> > outp;
@@ -942,6 +955,12 @@ void f_player() {
 	_frenzy_mode();
 	//printMap();
 
+	if (state->turn == 100) {
+		for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++ i)
+			if (i->building_type == Shannon || i->building_type == Thevenin)
+				sell(i->unit_id);
+	}
+
 	if (frenzy_flag == 0 && cqc_attack_flag == 0) {
 		GenRandom gr;
 		_update_age();
@@ -950,12 +969,12 @@ void f_player() {
 
 		int turn_index = min(state->turn / 20, 10);
 
-		gr.addItem(make_pair(0, 100));
+		gr.addItem(make_pair(0, (100 - ATTACK_PROB[turn_index])));
 		gr.addItem(make_pair(1, ATTACK_PROB[turn_index]));
 		if (gr._rand() == 1) _attack();
 		gr.clear();
 
-		gr.addItem(make_pair(0, 100));
+		gr.addItem(make_pair(0, (100 - DEFEND_PROB[turn_index])));
 		gr.addItem(make_pair(1, DEFEND_PROB[turn_index]));
 		if (gr._rand() == 1) _defend();
 		gr.clear();
