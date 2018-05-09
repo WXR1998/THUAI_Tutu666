@@ -801,6 +801,7 @@ void _frenzy_mode() {
 		frenzy_flag = 2;
 	}
 	if (frenzy_flag == 2) {
+		return;
 		_attack();
 		GenRandom gr;
 		gr.addItem(make_pair(0, 5));
@@ -961,10 +962,11 @@ void f_player() {
 				sell(i->unit_id);
 	}
 
-	if (frenzy_flag == 0 && cqc_attack_flag == 0) {
+	if (frenzy_flag != 1 && cqc_attack_flag == 0) {
 		GenRandom gr;
 		_update_age();
-		_build_programmer();
+		if (frenzy_flag == 0)
+			_build_programmer();
 		_upgradeBuilding();
 
 		int turn_index = min(state->turn / 20, 10);
