@@ -1,9 +1,9 @@
-#include "stdafx.h"
+//#include "stdafx.h"
 /*
 	Author:
 		Tutu666
 	Version:
-		0.0507.11
+		0.0509.02
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
@@ -132,12 +132,18 @@ const double SOLDIER_ATTACK_FACTOR = 3e0;	//Adjust the power of soldier, to bala
 
 const int dir[4][2] = { 0, 1, 1, 0, 0, -1, -1, 0 };
 const int MAX_OPERATION_PER_TURN = 50;
-const double MAX_CRISIS[2] = { 0, -1 };
+const double MAX_CRISIS[2] = { 0, 0 };
 const double MIN_ATTACK[6] = { 1e10, 2e10, 4e10, 8e10, 16e10, 32e10 };
 const double PROGRAMMER_RATIO[6] = { 1, 0.95, 0.8, 0.6, 0.5, 0.45 };
 const double PROGRAMMER_MIN_PARTITION[6] = { 1, 0.85, 0.7, 0.6, 0.5, 0.45 };
 const int UPDATE_AGE_BIAS[6] = { 99, 90, 80, 70, 70, 70 };
-const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 12;
+const int DEFEND_BUILDING_TO_ROAD_DISTANCE = 16;
+
+/*
+Probablity per 20 turns.
+*/
+const int ATTACK_PROB[] = {20, 20, 100, 200, 250, 250, 150, 100, 80, 80, 100};
+const int DEFEND_PROB[] = {50, 50, 50, 120, 130, 140, 150, 140, 120, 100, 100};
 
 const int FRENZY_LIMIT = 50000;
 int frenzy_flag = 0;
@@ -245,8 +251,11 @@ bool deny_construct[MAP_SIZE][MAP_SIZE];
 int buildingLimit() {
 	return MAX_BD_NUM + MAX_BD_NUM_PLUS * state->age[ts19_flag];
 }
+bool positionIsValid(Position p);
 bool canConstruct(Position p) {
-	return allow_construct[p.x][p.y] && deny_construct[p.x][p.y];
+	if (positionIsValid(p))
+		return allow_construct[p.x][p.y] && deny_construct[p.x][p.y];
+	else return false;
 }
 
 int distance(Position a, Position b) {
@@ -261,6 +270,7 @@ Position Pos(Position p, int typ = 0) {
 	*/
 	return (typ ? !ts19_flag : ts19_flag) ? inversePosition(p) : p;
 }
+void updateConstruct(Position p);
 bool _construct(BuildingType a, Position b, Position c = Position(0, 0)) {
 	if (operation_count <= 0) return false;
 	if (BUILDING_BUILDINGCOST[a] > my_building_credits || BUILDING_RESOURCE[a] > my_resource)
@@ -270,7 +280,10 @@ bool _construct(BuildingType a, Position b, Position c = Position(0, 0)) {
 	debug("Build %s %2d [%s] at (%3d,%3d) while pro=(%3d,%3d)\n", (a<9) ? "ATT" : ((a == 17) ? "PGM" : "DEF"), a, BUILDING_NAME[a], b.x, b.y, c.x, c.y);
 	--operation_count;
 	++my_build_request;
+	my_resource -= BUILDING_RESOURCE[a];
+	my_building_credits -= BUILDING_BUILDINGCOST[a];
 	construct(a, b, c);
+	updateConstruct(Pos(b));
 	return true;
 }
 bool _UpdateAge() {
@@ -334,10 +347,11 @@ void updateAllow(Position p) {
 void updateDeny(Position p) {
 	for (int i = p.x - MIN_BD_RANGE; i <= p.x + MIN_BD_RANGE; ++i)
 		for (int j = p.y - MIN_BD_RANGE; j <= p.y + MIN_BD_RANGE; ++j)
-			if (positionIsValid(Position(i, j)) && distance(Position(i, j), p) <= MIN_BD_RANGE)
+			if (positionIsValid(Position(i, j)) && distance(Position(i, j), p) < MIN_BD_RANGE)
 				deny_construct[i][j] = false;
 }
 void updateConstruct(Position p) {
+	debug("update %d %d\n", p.x, p.y);
 	updateAllow(p);
 	updateDeny(p);
 }
@@ -488,27 +502,14 @@ void _maintain() {
 	}
 }
 bool _build_a_programmer(Position p = (-1, -1)) {
-	if (p.x != -1) 
-		if (_construct(Programmer, Pos(p))) {
-			updateConstruct(p);
-			my_resource -= BUILDING_RESOURCE[Programmer];
-			my_building_credits -= BUILDING_BUILDINGCOST[Programmer];
-			return true;
-		}
-		else
-			return false;
+	if (p.x != -1)
+		return _construct(Programmer, Pos(p));
 	for (int sum = 12; sum < MAX_PROGRAMMER_POS; ++ sum)
-		for (int i = 0; i < MAX_PROGRAMMER_POS; ++i) {
+		for (int i = 0; i <= sum; ++i) {
 			int j = sum - i;
-			if (canConstruct(Position(i, j)))
-				if (_construct(Programmer, Pos(Position(i, j)))) {
-					updateConstruct(Position(i, j));
-					my_resource -= BUILDING_RESOURCE[Programmer];
-					my_building_credits -= BUILDING_BUILDINGCOST[Programmer];
-					return true;
-				}
-				else
-					return false;
+			if (canConstruct(Position(i, j))) {
+				return _construct(Programmer, Pos(Position(i, j)));
+			}
 		}
 	return false;
 }
@@ -516,12 +517,8 @@ void _build_programmer(int cqc_mode = 0) {
 	if (state->turn == 0) {
 		Position p = Position(10, 0);
 		for (;;)
-			if (_construct(Programmer, Pos(p))) {
-				updateConstruct(p);
-				my_resource -= BUILDING_RESOURCE[Programmer];
-				my_building_credits -= BUILDING_BUILDINGCOST[Programmer];
-				p = Position(p.x + 8, p.y);
-			}
+			if (_construct(Programmer, Pos(p)))
+				p = Position(p.x + MAX_BD_RANGE, p.y);
 			else
 				break;
 	}
@@ -532,8 +529,9 @@ void _build_programmer(int cqc_mode = 0) {
 				++tot_programmer;
 		while (tot_programmer < max(PROGRAMMER_RATIO[state->age[ts19_flag]] * state->building[ts19_flag].size(),
 			PROGRAMMER_MIN_PARTITION[state->age[ts19_flag]] * (MAX_BD_NUM + MAX_BD_NUM_PLUS * state->age[ts19_flag]))) {
-			if (_build_a_programmer())
+			if (_build_a_programmer()) {
 				++tot_programmer;
+			}
 			else
 				break;
 		}
@@ -625,7 +623,7 @@ void _defend(int defend_base = 0) {
 						for (int j = 0; j < MAP_SIZE; ++j)
 							if (canConstruct(Position(i, j)) && distance(nearestRoad(Position(i, j), r, DEFEND_BUILDING_TO_ROAD_DISTANCE), Position(i, j)) <= DEFEND_BUILDING_TO_ROAD_DISTANCE)
 								if (!defend_base)
-									if (i + j <= 200)
+									if (i + j <= 180)
 										if (bdtype != Hawkin)
 											gr.addItem(make_pair(i * MAP_SIZE + j, int((i + j)*(posCoverGrid(Position(i, j), BUILDING_ATTACK_RANGE[bdtype], r)))));//Defensive building prefers far from base
 										else
@@ -641,11 +639,8 @@ void _defend(int defend_base = 0) {
 					}
 					Position bdpos = Position(tmppos / MAP_SIZE, tmppos % MAP_SIZE);
 					if (positionIsValid(bdpos) && _construct(BuildingType(bdtype), Pos(bdpos))) {
-						updateConstruct(bdpos);
 						Building tmpbd = Building(BuildingType(bdtype), BUILDING_HEAL[bdtype], Pos(bdpos), ts19_flag, 0, 0);
 						crisis_value[0][typ][r] -= buildingCrisisValue(tmpbd, typ, r);
-						my_resource -= BUILDING_RESOURCE[bdtype];
-						my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
 					}
 					else {
 						exit_flag--;
@@ -658,15 +653,17 @@ void _defend(int defend_base = 0) {
 void _attack(int fixed_road = 0) {
 	priority_queue < heapComp > h;
 	GenRandom gr;
+	/*
 	for (int i = 0; i < 2; ++i)
 		for (int j = 1; j <= road_count; ++j)
 			h.push(heapComp(crisis_value[1][i][j], i, j));
+	*/
 	while (operation_count > 0) {
-		heapComp t = h.top(); h.pop();
+		//heapComp t = h.top(); h.pop();
 
+		int rnum = rand() % road_count + 1;
 		if (fixed_road)
-			t.rnum = fixed_road;
-		//t.rnum = rand() % road_count + 1;
+			rnum = fixed_road;
 
 		gr.clear();
 		for (int i = 1; i < 9; ++i)
@@ -679,8 +676,8 @@ void _attack(int fixed_road = 0) {
 		gr.clear();
 		for (int i = 0; i < MAP_SIZE; ++i)
 			for (int j = 0; j < MAP_SIZE; ++j)
-				if (canConstruct(Position(i, j)))
-					if (nearestRoad(Position(i, j), t.rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
+				if (i+j < 150 && canConstruct(Position(i, j)))
+					if (nearestRoad(Position(i, j), rnum, BUILDING_ATTACK_RANGE[bdtype]).x != -1)
 						if (!fixed_road && i + j <= 200 || (fixed_road && i < 20 && j < 20))
 							gr.addItem(make_pair(i * MAP_SIZE + j, (40000 / (i + j))));//Productive building prefers close to base
 		int tmppos = gr._rand();
@@ -695,16 +692,12 @@ void _attack(int fixed_road = 0) {
 					}
 		}
 		else {
-			prpos = nearestRoad(bdpos, t.rnum, BUILDING_ATTACK_RANGE[bdtype]);
+			prpos = nearestRoad(bdpos, rnum, BUILDING_ATTACK_RANGE[bdtype]);
 		}
-		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(prpos))) {
-			updateConstruct(bdpos);
-			my_resource -= BUILDING_RESOURCE[bdtype];
-			my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
-		}
+		if (_construct(BuildingType(bdtype), Pos(bdpos), Pos(prpos)));
 		else
 			break;
-		h.push(t);
+		//h.push(t);
 	}
 }
 
@@ -713,10 +706,10 @@ void _build_cqc_building() {
 	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
 		if (distance(Pos(i->pos), Position(0, 0)) > distance(Position(0, 0), head))
 			head = Pos(i->pos);
-	while (distance(head, Position(199, 199)) > 15) {
+	while (distance(head, Position(199, 199)) > 40) {
 		Position thead = head;
-		if (thead.y < 180)
-			thead = Position(thead.x, thead.y + 8);
+		if (thead.y < 160)
+			thead = Position(thead.x, thead.y + MAX_BD_RANGE);
 		for (int range = 0; range <= MAX_BD_RANGE && !canConstruct(thead); ++range)
 			for (int i = thead.x - range; i <= thead.x + range && !canConstruct(thead); ++i)
 				for (int j = thead.y - range; j <= thead.y + range && !canConstruct(thead); ++j)
@@ -760,9 +753,6 @@ void _build_cqc_building() {
 							flag = k;
 					if (flag) 
 						if (_construct(BuildingType(bdtype), Pos(Position(i, j)), Pos(nearestRoad(Position(i, j), flag, BUILDING_ATTACK_RANGE[bdtype])))) {
-							updateConstruct(Position(i, j));
-							my_resource -= BUILDING_RESOURCE[bdtype];
-							my_building_credits -= BUILDING_BUILDINGCOST[bdtype];
 							buildflag = 1;
 							continue;
 						}
@@ -871,7 +861,6 @@ void _CQC_defend_mode() {
 
 void _CQC_attack_mode() {
 	if (!cqc_attack_flag) {
-		return;
 		if (state->turn > 10) return;
 		int min_dis = 400;
 		for (auto i = state->building[!ts19_flag].begin(); i != state->building[!ts19_flag].end(); ++i)
@@ -894,6 +883,14 @@ void _CQC_attack_mode() {
 	}
 }
 
+void printMap(int p = 30) {
+	for (int i = 0; i < p; ++i) {
+		for (int j = 0; j < p; ++j)
+			debug("%c ", canConstruct(Position(i, j)) ? '#' : '.');
+		debug("\n");
+	}
+	debug("\n");
+}
 //#############################################################################################
 //Main
 int srand_flag = 0;
@@ -912,6 +909,7 @@ void f_player() {
 	canConstructUpdate();
 	calcCriAttValue();
 
+
 	crisisValuePrint();
 
 	int vis[20] = { 0 };
@@ -922,8 +920,8 @@ void f_player() {
 			vis[i->soldier_name] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++i)
-		debug("Sol %2d, [%16s], %6.1lf\n", i->first, SOLDIER_NAME[i->first], i->second / 1e6);
+	//for (auto i = outp.begin(); i != outp.end(); ++i)
+	//	debug("Sol %2d, [%16s], %6.1lf\n", i->first, SOLDIER_NAME[i->first], i->second / 1e6);
 	outp.clear();
 	memset(vis, 0, sizeof vis);
 	for (auto i = state->building[ts19_flag].begin(); i != state->building[ts19_flag].end(); ++i)
@@ -936,12 +934,13 @@ void f_player() {
 			vis[i->building_type] = 1;
 		}
 	sort(outp.begin(), outp.end());
-	for (auto i = outp.begin(); i != outp.end(); ++i)
-		debug("Bud %2d, [%16s], %6.1lf\n", i->first, BUILDING_NAME[i->first], i->second / 1e6);
+	//for (auto i = outp.begin(); i != outp.end(); ++i)
+	//	debug("Bud %2d, [%16s], %6.1lf\n", i->first, BUILDING_NAME[i->first], i->second / 1e6);
 
 	//_CQC_defend_mode();
 	_CQC_attack_mode();
 	_frenzy_mode();
+	//printMap();
 
 	if (frenzy_flag == 0 && cqc_attack_flag == 0) {
 		GenRandom gr;
@@ -949,34 +948,19 @@ void f_player() {
 		_build_programmer();
 		_upgradeBuilding();
 
-		gr.addItem(make_pair(0, 100));
-		if (state->turn < 60)
-			gr.addItem(make_pair(1, 20));
-		else if (state->turn < 85)
-			gr.addItem(make_pair(1, 100));
-		else if (state->turn < 120)
-			gr.addItem(make_pair(1, 150));
-		else if (state->turn < 150)
-			gr.addItem(make_pair(1, 150));
-		else
-			gr.addItem(make_pair(1, 120));
-		if (gr._rand() == 1)
-			_attack();
+		int turn_index = min(state->turn / 20, 10);
 
-		gr.clear();
 		gr.addItem(make_pair(0, 100));
-		if (state->turn < 50)
-			gr.addItem(make_pair(1, 50));
-		else if (state->turn < 100)
-			gr.addItem(make_pair(1, 120));
-		else if (state->turn < 150)
-			gr.addItem(make_pair(1, 140));
-		else
-			gr.addItem(make_pair(1, 100));
-		if (gr._rand() == 1)
-			_defend();
+		gr.addItem(make_pair(1, ATTACK_PROB[turn_index]));
+		if (gr._rand() == 1) _attack();
+		gr.clear();
+
+		gr.addItem(make_pair(0, 100));
+		gr.addItem(make_pair(1, DEFEND_PROB[turn_index]));
+		if (gr._rand() == 1) _defend();
+		gr.clear();
+
 		_maintain();
-		if (state->turn > 90)
-			_attack();
+		if (state->turn > 90) _attack();
 	}
 }
