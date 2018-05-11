@@ -4,7 +4,7 @@ const bool FORBID_CQC = false;
 	Author:
 		Tutu666
 	Version:
-		0.0509.21
+		1.0
 	Instructions:
 		When upload code to the server, please comment the first line.
 		To enable debugging print, add '/D "LOCAL"' in complie settings.
